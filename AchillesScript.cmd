@@ -1,11 +1,5 @@
-@echo off
-cls
-::Switch codepage to unicode
-::Переключение кодировку на юникод
-chcp 65001>nul 2>&1
-::Change background and font colors
-::Изменение цвета фона и шрифта
-color 0F
+::https://github.com/lostzombie/AchillesScript
+@echo off&cls&chcp 65001>nul 2>&1&color 0F
 ::Init x64 system utils
 ::Назначение 64х битных системных утилит
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
@@ -21,6 +15,7 @@ set "shutdown=%sysdir%\shutdown.exe"
 set "timeout=%sysdir%\timeout.exe"
 set "script=%~0"
 set "param=%~1"
+set TRUSTED=
 ::Check russian keyboard layout
 ::Проверка наличия русской раскладки
 %reg% query "HKCU\Control Panel\International\User Profile\ru">nul 2>&1&&set RU=ru
@@ -29,24 +24,31 @@ set "param=%~1"
 if defined RU (title Ахилесов Скрипт) else (title Achilles' Script)
 ::Check if bath launched in safe boot mode
 ::Проверяем запущен ли скрипт в безопасном режиме
-if not defined SAFEBOOT_OPTION goto :SKIPSAFE
+if not defined SAFEBOOT_OPTION goto :SKIP
  if [%param%] == [] if defined RU (echo Запустите скрипт в нормальном режиме, скрипт сам перезагрузится в безопасный режим&pause&exit) else (echo Launch the script in normal mode, the script itself will restart into a safe mode&pause&exit)
-::Restore default boot parameters
-::Восстановление параметров стандартной загрузки
+ ::Restore default boot parameters
+ ::Восстановление параметров стандартной загрузки
+ dir "%SystemDrive%\System Volume Information">nul 2>&1&&set TRUSTED=1
+ if defined TRUSTED goto :SKIP
+ if defined RU (echo Восстановление параметров стандартной загрузки...) else (echo Restore default boot parameters...)
  %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "explorer.exe" /f>nul 2>&1
  %bcdedit% /deletevalue {default} safeboot>nul 2>&1
- dir "%SystemDrive%\System Volume Information">nul 2>&1||(call :TRUSTED&&exit)
-:SKIPSAFE
+ if defined RU (echo Получение привилегий Trusted Installer...) else (echo Getting Trusted Installer privileges...)
+ call :TRUSTED&&exit
+:SKIP
 if [%param%] neq [] if [%param%] neq [1] if [%param%] neq [2] if [%param%] neq [3] if [%param%] neq [4] if [%param%] neq [5] if [%param%] neq [6] if [%param%] neq [7] if [%param%] neq [8] exit
 if [%param%] neq [] set menu=%param%&goto :MENU%param%
 ::Detect is Windows version
 ::Определение версии Windows
+if defined RU (echo Определение версии Windows...) else (echo Determining the Windows version...)
 for /f "tokens=4 delims= " %%v in ('ver') do set "win=%%v"
 for /f "tokens=3 delims=." %%v in ('echo  %win%') do set /a "build=%%v"
 for /f "tokens=1 delims=." %%v in ('echo  %win%') do set /a "win=%%v"
 for /f "tokens=4" %%a in ('ver') do set "WindowsBuild=%%a"
 set "WindowsBuild=%WindowsBuild:~5,-1%"
 if [%win%] lss [10] if defined RU (echo Этот скрипт разработан для Windows 10 и новее)&echo.&pause&exit else (echo This script is designed for Windows 10 and newer)&echo.&pause&exit
+for /f "tokens=3,*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName') do set "WindowsVersion=%%a %%b"
+if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
 ::Detect is admin account
 ::Определение учетки администратора
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||if defined RU (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
@@ -55,11 +57,10 @@ if [%win%] lss [10] if defined RU (echo Этот скрипт разработа
 if not exist "%powershell%" if defined RU (echo Ошибка файл %powershell% не найден&pause&exit) else (echo Error %powershell% file not exist&pause&exit)
 ::Check if you have administrator rights and restart with a UAC prompt if you do not have them
 ::Проверка наличия прав администратора и перезапуск в запросом UAC в случае их отсутсвия
+ if defined RU (echo Запрос привилегий администратора...) else (echo Requesting Administrator privileges...)
 dir "%windir%\system32\config\systemprofile">nul 2>&1||(%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/c', '%script%' -Verb RunAs&exit)
 ::Main screen and menu
 ::Главный экран и меню
-for /f "tokens=3,*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName') do set "WindowsVersion=%%a %%b"
-if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
 :MAIN
 cls
 			   echo [36m┌──────────────────────────────────────────┐[0m
@@ -96,14 +97,7 @@ echo.
 if defined RU (set /p menu="Введите номер пункта меню используя клавиатуру [0-8]:") else (set /p menu="Enter menu item number using your keyboard [0-8]:")
 if [%menu%] neq [0] if [%menu%] neq [1] if [%menu%] neq [2] if [%menu%] neq [3] if [%menu%] neq [4] if [%menu%] neq [5] if [%menu%] neq [6] if [%menu%] neq [7] if [%menu%] neq [8] goto :MAIN
 if [%menu%] == [0] exit
-if [%menu%] == [1] call :MENU1
-if [%menu%] == [2] call :MENU2
-if [%menu%] == [3] call :MENU3
-if [%menu%] == [4] call :MENU4
-if [%menu%] == [5] call :MENU5
-if [%menu%] == [6] call :MENU6
-if [%menu%] == [7] call :MENU7
-if [%menu%] == [8] call :MENU8
+call :MENU%menu%
 
 :MENU1
 if [%param%] == [] call :WARNING
@@ -151,12 +145,13 @@ call :REBOOT2NORMAL
 :MENU5
 if not defined SAFEBOOT_OPTION (
  if [%param%] == [] call :WARNING
- call :POLICIES
- call :SETTING1
+ ::call :BACKUP
+ ::call :POLICIES
+ ::call :SETTING1
  call :REBOOT2SAFE
 )
-call :SETTING2
-call :SERVICES
+::call :SETTING2
+::call :SERVICES
 call :BLOCK
 call :REBOOT2NORMAL
 
@@ -220,7 +215,7 @@ exit
 %sc% config TrustedInstaller start= demand>nul 2>&1
 %sc% start TrustedInstaller>nul 2>&1
 del /f /q "%~dp0ti.ps1">nul 2>&1
-set RunAsTrustedInstaller="%script% %param%"
+set "RunAsTrustedInstaller=%script% %param%"
 echo $AppFullPath=[System.Environment]::GetEnvironmentVariable('RunAsTrustedInstaller')>>"%~dp0ti.ps1"
 echo [string]$GetTokenAPI=@'>>"%~dp0ti.ps1"
 echo using System;using System.ServiceProcess;using System.Diagnostics;using System.Runtime.InteropServices;using System.Security.Principal;namespace WinAPI{internal static class WinBase{[StructLayout(LayoutKind.Sequential)]internal struct SECURITY_ATTRIBUTES{public int nLength;public IntPtr lpSecurityDescriptor;public bool bInheritHandle;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct STARTUPINFO{public Int32 cb;public string lpReserved;public string lpDesktop;public string lpTitle;public uint dwX;public uint dwY;public uint dwXSize;public uint dwYSize;public uint dwXCountChars;public uint dwYCountChars;public uint dwFillAttribute;public uint dwFlags;public Int16 wShowWindow;public Int16 cbReserved2;public IntPtr lpReserved2;public IntPtr hStdInput;public IntPtr hStdOutput;public IntPtr hStdError;}[StructLayout(LayoutKind.Sequential)]internal struct PROCESS_INFORMATION{public IntPtr hProcess;public IntPtr hThread;public uint dwProcessId;public uint dwThreadId;}}internal static class WinNT{public enum TOKEN_TYPE{TokenPrimary=1,TokenImpersonation}public enum SECURITY_IMPERSONATION_LEVEL{SecurityAnonymous,SecurityIdentification,SecurityImpersonation,SecurityDelegation}[StructLayout(LayoutKind.Sequential,Pack=1)]internal struct TokPriv1Luid{public uint PrivilegeCount;public long Luid;public UInt32 Attributes;}}internal static class Advapi32{public const int SE_PRIVILEGE_ENABLED=0x00000002;public const uint CREATE_NO_WINDOW=0x08000000;public const uint CREATE_NEW_CONSOLE=0x00000010;public const uint CREATE_UNICODE_ENVIRONMENT=0x00000400;public const UInt32 STANDARD_RIGHTS_REQUIRED=0x000F0000;public const UInt32 STANDARD_RIGHTS_READ=0x00020000;public const UInt32 TOKEN_ASSIGN_PRIMARY=0x0001;public const UInt32 TOKEN_DUPLICATE=0x0002;public const UInt32 TOKEN_IMPERSONATE=0x0004;public const UInt32 TOKEN_QUERY=0x0008;public const UInt32 TOKEN_QUERY_SOURCE=0x0010;public const UInt32 TOKEN_ADJUST_PRIVILEGES=0x0020;public const UInt32 TOKEN_ADJUST_GROUPS=0x0040;public const UInt32 TOKEN_ADJUST_DEFAULT=0x0080;public const UInt32 TOKEN_ADJUST_SESSIONID=0x0100;public const UInt32 TOKEN_READ=(STANDARD_RIGHTS_READ^|TOKEN_QUERY);public const UInt32 TOKEN_ALL_ACCESS=(STANDARD_RIGHTS_REQUIRED^|TOKEN_ASSIGN_PRIMARY^|TOKEN_DUPLICATE^|TOKEN_IMPERSONATE^|TOKEN_QUERY^|TOKEN_QUERY_SOURCE^|TOKEN_ADJUST_PRIVILEGES^|TOKEN_ADJUST_GROUPS^|TOKEN_ADJUST_DEFAULT^|TOKEN_ADJUST_SESSIONID);[DllImport("advapi32.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]public static extern bool OpenProcessToken(IntPtr ProcessHandle,UInt32 DesiredAccess,out IntPtr TokenHandle);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public extern static bool DuplicateTokenEx(IntPtr hExistingToken,uint dwDesiredAccess,IntPtr lpTokenAttributes,WinNT.SECURITY_IMPERSONATION_LEVEL ImpersonationLevel,WinNT.TOKEN_TYPE TokenType,out IntPtr phNewToken);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]internal static extern bool LookupPrivilegeValue(string lpSystemName,string lpName,ref long lpLuid);[DllImport("advapi32.dll",SetLastError=true)]internal static extern bool AdjustTokenPrivileges(IntPtr TokenHandle,bool DisableAllPrivileges,ref WinNT.TokPriv1Luid NewState,UInt32 Zero,IntPtr Null1,IntPtr Null2);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessAsUserW(IntPtr hToken,string lpApplicationName,string lpCommandLine,IntPtr lpProcessAttributes,IntPtr lpThreadAttributes,bool bInheritHandles,uint dwCreationFlags,IntPtr lpEnvironment,string lpCurrentDirectory,ref WinBase.STARTUPINFO lpStartupInfo,out WinBase.PROCESS_INFORMATION lpProcessInformation);[DllImport("advapi32.dll",SetLastError=true)]public static extern bool SetTokenInformation(IntPtr TokenHandle,uint TokenInformationClass,ref IntPtr TokenInformation,int TokenInformationLength);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public static extern bool RevertToSelf();}internal static class Kernel32{[Flags]public enum ProcessAccessFlags:uint{All=0x001F0FFF}[DllImport("kernel32.dll",SetLastError=true)]>>"%~dp0ti.ps1"
@@ -244,9 +239,13 @@ del /f /q "%~dp0ti.ps1">nul 2>&1
 exit /b %trusted%
 
 :BACKUP
-%schtasks% /Change /TN "Microsoft\Windows\Registry\RegIdleBackup" /Enable>nul 2>&1
-%schtasks% /Run /I /TN "Microsoft\Windows\Registry\RegIdleBackup">nul 2>&1
-%powershell% -ExecutionPolicy Bypass -Command "Checkpoint-Computer -Description 'Achilles Script' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"
+echo.
+if defined RU (echo Включение задания RegIdleBackup в планировщике...) else (echo Enabling the RegIdleBackup task in the scheduler...)
+%schtasks% /Change /TN "Microsoft\Windows\Registry\RegIdleBackup" /Enable>nul 2>&1&&echo OK||if defined RU (echo Пропуск) else (echo Skip)
+if defined RU (echo Запуск задания RegIdleBackup из планировщика...) else (echo Running a RegIdleBackup task from the scheduler...)
+%schtasks% /Run /I /TN "Microsoft\Windows\Registry\RegIdleBackup">nul 2>&1&&echo OK||if defined RU (echo Пропуск) else (echo Skip)
+if defined RU (echo Создание точки восстановления, если восстановление включено...) else (echo Creating a recovery point if recovery is enabled...)
+%powershell% -ExecutionPolicy Bypass -Command "Checkpoint-Computer -Description 'Achilles Script' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||if defined RU (echo Пропуск) else (echo Skip)
 exit /b
 
 :POLICIES
@@ -524,4 +523,15 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+
 exit /b
