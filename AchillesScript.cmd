@@ -23,6 +23,7 @@ set "tiargs=%args:ti=%"
 set "tiargs=%tiargs:~1%"
 set "msg=call :2LangMsg"
 set "err=call :2LangErr"
+set "errn=call :2LangErrNoPause"
 set "if=if defined"
 set "ifnot=if not defined"
 set "else=^|^|"
@@ -37,22 +38,20 @@ set UserSettingDone=
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%if% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
 if not exist "%powershell%" %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
 %msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."
-dir "%windir%\system32\config\systemprofile">nul 2>&1||(%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/c', '%Script%' -Verb RunAs&exit)
+dir "%windir%\system32\config\systemprofile">nul 2>&1||(%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/c', '%Script% %args%' -Verb RunAs&exit)
 ::Args
 %if% arg1 (
-	for %%i in (apply multi restore cancel block unblock ti backup point regback reg safeboot winre sac) do if [%arg1%]==[%%i] set "isValidArg=%%i"
-	%ifnot% isValidArg %err% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"
+	for %%i in (apply multi restore cancel block unblock ti backup safeboot winre sac) do if [%arg1%]==[%%i] set "isValidArg=%%i"
+	%ifnot% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
+	set  isValidArg=
 )
 if exist "%pth%hkcu.txt" set UserSettingDone=1
 %ifnot% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
 if "%arg1%"=="apply" (
 	%ifnot% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
-	set isValidArg=
 	%if% arg2 for %%i in (1 2 3 4 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
-	%ifnot% isValidArg %err% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"
-	set isValidArg=
-	%if% arg2 for %%i in (1 2 3 4) do if [%arg2%]==[%%i] set "isValidArg=%%i"
-	%if% isValidArg call :Menu%isValidArg%
+	%ifnot% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
+	%if% arg2 for %%i in (1 2 3 4) do if [%arg2%]==[%%i] call :Menu%%i
 	if [%arg2%]==[policies] set Policies=1
 	if [%arg2%]==[setting]  set Registry=1
 	if [%arg2%]==[services] set Services=1
@@ -65,7 +64,7 @@ if "%arg1%"=="multi" (
 	%ifnot% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
 	set isValidArg=
 	%if% multi for %%i in (policies setting services block) do if [%multi%]==[%%i] set "isValidArg=%%i"
-	%ifnot% isValidArg %err% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"
+	%ifnot% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
 	if [%isValidArg%]==[policies] set Policies=1
 	if [%isValidArg%]==[setting]  set Registry=1
 	if [%isValidArg%]==[services] set Services=1
@@ -164,6 +163,9 @@ exit
 exit /b
 :2LangErr
 (%if% Lang (echo %~2) else (echo %~1))&pause>nul 2>&1&exit
+
+:2LangErrNoPause
+(%if% Lang (echo %~2) else (echo %~1))&exit /b 1
 
 :CheckTrusted
 dir "%SystemDrive%\System Volume Information">nul 2>&1&&exit /b 0||exit /b 1
