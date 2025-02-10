@@ -84,7 +84,7 @@ if "%arg1%"=="backup"  (
 	call :Backup
 	exit /b
 )
-if "%arg1%"=="safeboot"(
+if "%arg1%"=="safeboot" (
   %bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
   %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
   %shutdown% -r -f -t 5
