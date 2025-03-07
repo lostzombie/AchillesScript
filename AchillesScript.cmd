@@ -2,6 +2,7 @@
 @echo off
 cls&chcp 65001>nul 2>&1&color 0F
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
+if "%sysdir%"=="X:\windows\system32" set "sysdir=C:\windows\system32"
 set "cmd=%sysdir%\cmd.exe"
 set "reg=%sysdir%\reg.exe"
 set "bcdedit=%sysdir%\bcdedit.exe"
@@ -13,8 +14,10 @@ set "schtasks=%sysdir%\schtasks.exe"
 set "shutdown=%sysdir%\shutdown.exe"
 set "timeout=%sysdir%\timeout.exe"
 set "reagentc=%sysdir%\reagentc.exe"
-set "Script=%~0"
+set "Script=%~dpnx0"
 set "pth=%~dp0"
+set "save=%pth%"
+if "%pth%"=="%tmp%" for /f "usebackq tokens=1,2,*" %%B in (`%reg% query "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v Desktop`) do set save=%%D\
 set "arg1=%~1"
 set "arg2=%~2"
 shift
@@ -32,16 +35,16 @@ set L=ru
 set isTrustedInstaller=
 set UserSettingDone=
 ::#############################################################################
-(reg query "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% (if exist "%sysdir%\%L%-%L%" (set Lang=%L%) else (if exist "C:\Windows\System32\%L%-%L%" (set Lang=%L%)))
+(%reg% query "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%reg% query "HKLM\SYSTEM\CurrentControlSet\Control\Nls\Language" /v Default|find "0x409">nul 2>&1) %then% (set Lang=%L%))
 %ifnot% Lang (title Achilles' Script) else (title Ахилесов Скрипт)
-::Detect is admin account # Определение учетки администратора
+::
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%if% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
 if not exist "%powershell%" %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
-%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."
-dir "%windir%\system32\config\systemprofile">nul 2>&1||(%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/c', '%Script% %args%' -Verb RunAs&exit)
+dir "%windir%\system32\config\systemprofile">nul 2>&1||(%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/k', '%Script% %args%' -Verb RunAs&exit)
+echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write error in %pth%test.ps1" "Ошибка тестовой записи в %pth%test.ps1"&pause&exit)
 ::Args
 %if% arg1 (
-	for %%i in (apply multi restore cancel block unblock ti backup safeboot winre sac) do if [%arg1%]==[%%i] set "isValidArg=%%i"
+	for %%i in (apply multi restore block unblock ti backup safeboot winre sac) do if [%arg1%]==[%%i] set "isValidArg=%%i"
 	%ifnot% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
 	set  isValidArg=
 )
@@ -49,9 +52,9 @@ if exist "%pth%hkcu.txt" set UserSettingDone=1
 %ifnot% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
 if "%arg1%"=="apply" (
 	%ifnot% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
-	%if% arg2 for %%i in (1 2 3 4 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
+	%if% arg2 for %%i in (1 2 3 4 6 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
 	%ifnot% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
-	%if% arg2 for %%i in (1 2 3 4) do if [%arg2%]==[%%i] call :Menu%%i
+	%if% arg2 for %%i in (1 2 3 4 6) do if [%arg2%]==[%%i] call :Menu%%i
 	if [%arg2%]==[policies] set Policies=1
 	if [%arg2%]==[setting]  set Registry=1
 	if [%arg2%]==[services] set Services=1
@@ -74,11 +77,11 @@ if "%arg1%"=="multi" (
 	call :MAIN
 )
 if "%arg1%"=="restore" call :Menu6
-if "%arg1%"=="block"   if "%arg2%" neq "" call :BlockProcess %arg2%&exit /b
-if "%arg1%"=="unblock" if "%arg2%" neq "" call :UnBlockProcess %arg2%&exit /b
+if "%arg1%"=="block"   if "%arg2%" neq "" (call :BlockProcess %arg2%&exit /b)
+if "%arg1%"=="unblock" if "%arg2%" neq "" (call :UnBlockProcess %arg2%&exit /b)
 if "%arg1%"=="ti"      (call :TrustedRun "%tiargs%"&exit /b %errorlevel%)
 if "%arg1%"=="backup"  (
-	call :CheckTrusted||(del /f/q "%pth%MySecurityDefaults.reg">nul 2>&1&call :Backup)
+	call :CheckTrusted||(del /f/q "%save%MySecurityDefaults.reg">nul 2>&1&call :Backup)
 	call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
 	call :Backup
 	exit /b
@@ -93,7 +96,7 @@ if "%arg1%"=="safeboot" (
 if "%arg1%"=="winre"  call :WinRE&exit /b
 if "%arg1%"=="sac"    call :SAC&exit /b
 if "%arg1%" neq "" %err% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&pause&exit
-::Detect is Windows version # Определение версии Windows
+::
 %msg% "Determining the Windows version..." "Определение версии Windows..."
 for /f "tokens=4 delims= " %%v in ('ver') do set "win=%%v"
 for /f "tokens=3 delims=." %%v in ('echo  %win%') do set /a "build=%%v"
@@ -129,8 +132,7 @@ call :Menu3
 :Menu5
 cls
 echo.
-echo Menu 5 Under construction
-pause
+call :MiniHelp
 goto :BEGIN
 :Menu6
 cls
@@ -173,14 +175,14 @@ dir "%SystemDrive%\System Volume Information">nul 2>&1&&exit /b 0||exit /b 1
 :Warning
 cls
 echo.
-if exist "%pth%MySecurityDefaults.reg" (
+if exist "%save%MySecurityDefaults.reg" (
 %msg% "MySecurityDefaults.reg is detected, the backup of the current settings will be skipped." "Обнаружен MySecurityDefaults.reg, будет пропущен бэкап текущих настроек."
 %msg% "Delete MySecurityDefaults.reg and restart the script if you want to create a new backup." "Удалите MySecurityDefaults.reg и перезапустите скрипт если хотите создать новый бэкап."
 echo.
 )
 %if% Policies (
 %msg% "Group policies will be applied to disable " "Будут применены групповые политики для отключения "
-%msg% "Windows Defender, SmartScreen, and Kernel Isolation." "Защитника Windows, SmartScreen, Изоляции ядра."
+%msg% "Windows Defender, SmartScreen, Kernel Isolation, SmartAppControl etc." "Защитника Windows, SmartScreen, Изоляции ядра, Интелектуального управления приложениями"
 if exist "%sysdir%\MRT.exe" %msg% "Disable updating and reporting for Malicious Software Removal Tool." "Отключено обновление и отчеты средства удаления вредоносных программ."
 echo.
 )
@@ -200,7 +202,8 @@ exit /b
 
 :Reboot2Safe
 %bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "cmd.exe /c cd \"%pth%\\"&\"%Script%\" apply %Item%" /f>nul 2>&1||%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "cmd.exe /c \"%Script%\" apply %Item%" /f>nul 2>&1&&((%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell"|find "%Script%">nul 2>&1)||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit))||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit)
+%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend" /f>nul 2>&1
 %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
 %shutdown% -r -f -t 5
 %timeout% 4
@@ -244,7 +247,7 @@ del /f /q "%pth%ti.ps1">nul 2>&1
 exit /b %trusted%
 
 :Backup 
-if exist "%pth%MySecurityDefaults.reg" goto :EndBackup
+if exist "%save%MySecurityDefaults.reg" goto :EndBackup
 call :CheckTrusted&&goto :TrustedBackup
 %if% UserSettingDone goto :EndBackup
 %msg% "Enabling the RegIdleBackup task in the scheduler..." "Включение задания RegIdleBackup в планировщике..."
@@ -261,10 +264,10 @@ goto :EndBackup
 call :HKLM_List
 call :BackupReg "hklm.list" "hklm.txt"
 del /f/q "%pth%hklm.list">nul 2>&1
-copy /b "%pth%hkcu.txt"+"%pth%hklm.txt" "%pth%MySecurityDefaults.reg">nul 2>&1
+copy /b "%pth%hkcu.txt"+"%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1
 del /f/q "%pth%hkcu.txt">nul 2>&1
 del /f/q "%pth%hklm.txt">nul 2>&1
-%msg% "The current settings are saved in %pth%MySecurityDefaults.reg" "Текущие настройки сохранены в %pth%MySecurityDefaults.reg"
+%msg% "The current settings are saved in %save%MySecurityDefaults.reg" "Текущие настройки сохранены в %save%MySecurityDefaults.reg"
 :EndBackup
 exit /b
 
@@ -351,6 +354,7 @@ echo HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments,SaveZo
 echo HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments,ScanWithAntiVirus>>"%pth%hkcu.list"
 echo HKCU:\Software\Policies\Microsoft\Edge,SmartScreenEnabled>>"%pth%hkcu.list"
 echo HKCU:\Software\Policies\Microsoft\Edge,SmartScreenPuaEnabled>>"%pth%hkcu.list"
+echo HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend>>"%pth%hkcu.list"
 exit /b
 
 :HKLM_List
@@ -573,7 +577,6 @@ echo HKLM:\SYSTEM\CurrentControlSet\Control\Ubpm,CriticalMaintenance_DefenderCle
 echo HKLM:\SYSTEM\CurrentControlSet\Control\Ubpm,CriticalMaintenance_DefenderVerification>>"%pth%hklm.list"
 echo HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderApiLogger,Start>>"%pth%hklm.list"
 echo HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderAuditLogger,Start>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend>>"%pth%hklm.list"
 echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Allow_In>>"%pth%hklm.list"
 echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Allow_Out>>"%pth%hklm.list"
 echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Block_In>>"%pth%hklm.list"
@@ -608,7 +611,6 @@ exit /b
 
 :Policies
 %msg% "Applying group policies..." "Применение групповых политик..." 
-::Disabling Defender via Group Policies # Отключение Защитника через групповые политики
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "AllowFastServiceStartup" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableLocalAdminMerge" /t REG_DWORD /d 1 /f>nul 2>&1
@@ -674,7 +676,7 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection" /v "DisallowExploitProtectionOverride" /t REG_DWORD /d 1 /f>nul 2>&1
-::Disabling SmartScreen via Group Policies # Отключение SmartScreen через групповые политики через групповые политики
+::
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v "EnableSmartScreen" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v "ConfigureAppInstallControlEnabled" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v "ConfigureAppInstallControl" /t REG_SZ /d "Anywhere" /f>nul 2>&1
@@ -685,7 +687,7 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components" /v "NotifyUnsafeApp" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components" /v "NotifyMalicious" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components" /v "NotifyPasswordReuse" /t REG_DWORD /d 0 /f>nul 2>&1
-::Disbaling Virtualization Based Security via Group Policies # Отключение безопасности на основе виртуализации ядра
+::
 %reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "HypervisorEnforcedCodeIntegrity" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "LsaCfgFlags" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "RequirePlatformSecurityFeatures" /f>nul 2>&1
@@ -704,10 +706,10 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Systray" /v "HideSystray" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\UX Configuration" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-::Disable updating and reporting for Windows Malicious Software Removal Tool # Отключить обновление и создание отчетов для средства удаления вредоносных программ Windows
+::
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\MRT" /v DontOfferThroughWUAU /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\MRT" /v DontReportInfectionInformation /t REG_DWORD /d 1 /f>nul 2>&1
-::Hiding security setting # Скрытие параметров безопасности
+::
 set "HidePath=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
 for /f "usebackq tokens=2*" %%A in (`reg query "%HidePath%" /v "SettingsPageVisibility" 2^>nul`) do (
     set "SettingsPageVisibility=%%B"
@@ -720,39 +722,37 @@ exit /b
 
 :RegistryHKCU
 %msg% "Applying registry settings for the current user..." "Применение настроек реестра для текущего пользователя..." 
-::Disable tasks # Отключение задач
 %schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /Disable>nul 2>&1
 %schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /Disable>nul 2>&1
 %schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan" /Disable>nul 2>&1
 %schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Verification" /Disable>nul 2>&1
 %schtasks% /Change /TN "Microsoft\Windows\AppID\SmartScreenSpecific" /Disable>nul 2>&1
-::Disable SmartScreen for Microsoft Store apps # Отключение SmartScreen для приложений Microsoft Store
+::
 %reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\AppHost" /v "EnableWebContentEvaluation" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\AppHost" /v "PreventOverride" /t REG_DWORD /d 0 /f>nul 2>&1
-::SmartScreen setting in Security Health # Настройки SmartScreen в центре безопасности
+::
 %reg% add "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_EdgeSmartScreenOff" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_StoreAppsSmartScreenOff" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_PuaSmartScreenOff" /t REG_DWORD /d 1 /f>nul 2>&1
-::Disable warning and scanning for downloaded files # Отключение предупреждения и сканирования для скачанных файлов
+::
 %reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments" /v "SaveZoneInformation" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments" /v "ScanWithAntiVirus" /t REG_DWORD /d 1 /f>nul 2>&1
-::Disabling notifications # Отключение уведомлений
+::
 %reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
 exit /b
 
 :Registry
 %msg% "Applying registry settings..." "Применение настроек реестра..."
-::Disable SmartScreen for Microsoft Store apps # Отключение SmartScreen для приложений Microsoft Store
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" /v "EnableWebContentEvaluation" /t REG_DWORD /d 0 /f>nul 2>&1
-::Disable shell extensions # Отключение расширений проводника
+::
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /t REG_SZ /d "" /f>nul 2>&1
 %regsvr32% /u "%SystemDrive%\Program Files\Windows Defender\shellext.dll" /s>nul 2>&1
-::Disable warning and scanning for downloaded files # Отключение предупреждения и сканирования для скачанных файлов
+::
 %reg% add "HKLM\SOFTWARE\Classes\exefile\shell\open" /v "NoSmartScreen" /t REG_SZ /d "" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Classes\exefile\shell\runas" /v "NoSmartScreen" /t REG_SZ /d "" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Classes\exefile\shell\runasuser" /v "NoSmartScreen" /t REG_SZ /d "" /f>nul 2>&1
-::Disabling and Defender settings to minimum values in the Registry # Отключение и перевод в минимальные значения настроек Защитника в реестре
+::
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Notifications" /v "DisableEnhancedNotifications" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "FilesBlockedNotificationDisabled" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "NoActionNotificationDisabled" /t REG_DWORD /d 1 /f>nul 2>&1
@@ -811,20 +811,19 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR" /v "EnableASRConsumers" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t REG_DWORD /d 0 /f>nul 2>&1
-::Disable Security Center Autorun # Отключение автозапуска центра безопасности
+::
 %reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "SecurityHealth">nul 2>&1&&(
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "SecurityHealth" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\AutorunsDisabled" /v "SecurityHealth" /t REG_EXPAND_SZ /d "^%windir^%\system32\SecurityHealthSystray.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /v "SecurityHealth" /t REG_BINARY /d "FFFFFFFFFFFFFFFFFFFFFFFF" /f>nul 2>&1
 )
-::Disabling notifications # Отключение уведомлений
+::
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
-::Disabling SmartAppControl # Отключение Интелектуального управления приложениями
+::
 %reg% add "HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f>nul 2>&1
-::%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\CI\Protected" /v "VerifiedAndReputablePolicyStateMinValueSeen" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "SmartLockerMode" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "VerifiedAndReputableTrustModeEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
-::Disbaling Virtualization Based Security # Отключение безопасности на основе виртуализации ядра
+::
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Device security" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
 %reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBy" /f>nul 2>&1
 %reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBySysprep" /f>nul 2>&1
@@ -837,12 +836,12 @@ exit /b
 %reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" /v "AuditModeEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" /v "WasEnabledBy" /t REG_DWORD /d 4 /f>nul 2>&1
-::Disabling events and logs # Отключение логов и событий
+::
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Windows Defender\Operational" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Windows Defender\WHC" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderApiLogger" /v "Start" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderAuditLogger" /v "Start" /t REG_DWORD /d 0 /f>nul 2>&1
-::Delete WebThreat and Defender firewall rules groups # Удаление групп правил файрволла WebThreat и Защитника
+::
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_In" /f>nul 2>&1
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_Out" /f>nul 2>&1
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_In" /f>nul 2>&1
@@ -850,17 +849,17 @@ exit /b
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-1" /f>nul 2>&1
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-2" /f>nul 2>&1
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-3" /f>nul 2>&1
-::Delete Defender's tasks from Background Process Manager setting # Удаление задач Защиткника из настроек Диспетчера фоновых процессов
+::
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\Ubpm" /v "CriticalMaintenance_DefenderCleanup" /f>nul 2>&1
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\Ubpm" /v "CriticalMaintenance_DefenderVerification" /f>nul 2>&1
-::Delete registration of Smartscreen # Удаление регистрации SmartScreen
+::
 %reg% delete "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
-::Disable SmartScreen for apps and files # Отключение SmartScreen для приложений и файлов
+::
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "SmartScreenEnabled" /t REG_SZ /d "Off" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "AicEnabled" /t REG_SZ /d "Anywhere" /f>nul 2>&1
-::Disabling the startup of the Defender service in safe mode # Отключение запуска службы Защитника в безопасном режиме
+::
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend" /f>nul 2>&1
 exit /b
 
@@ -869,7 +868,7 @@ exit /b
 for %%s in (WinDefend MDCoreSvc WdNisSvc Sense wscsvc SgrmBroker SecurityHealthService webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd) do (
 %reg% query "HKLM\System\CurrentControlset\Services\%%~s">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\%%~s" /v "Start" /t REG_DWORD /d 4 /f>nul 2>&1
 )
-::Delete WebThreatDefense from Svchost launch list # Удаление WebThreatDefense из списка запуска через Svchost
+::
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurentVersion\Svchost" /v "WebThreatDefense" /f>nul 2>&1
 exit /b
 
@@ -924,9 +923,14 @@ exit /b %errorlevel%
 %reg% delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /f>nul 2>&1
 %reg% delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments" /f>nul 2>&1
 %reg% delete "HKCU\Software\Policies\Microsoft\Edge" /f>nul 2>&1
-if exist "%pth%MySecurityDefaults.reg" (
+if exist "%save%MySecurityDefaults.reg" (
+	%msg% "Restore %save%MySecurityDefaults.reg" "Восстановление %save%MySecurityDefaults.reg"
+	%reg% import "%save%MySecurityDefaults.reg">nul 2>&1
+) else (
+	if exist "%pth%MySecurityDefaults.reg" (
 	%msg% "Restore %pth%MySecurityDefaults.reg" "Восстановление %pth%MySecurityDefaults.reg"
 	%reg% import "%pth%MySecurityDefaults.reg">nul 2>&1
+	)
 )
 exit /b
 
@@ -951,9 +955,9 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %ifnot% ProgramFiles(x86) goto :SkipRestoreSmartscreen
 %reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /ve /t REG_SZ /d "SmartScreen" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /v "AppID" /t REG_SZ /d "{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /ve /t REG_SZ /d "C:\Windows\System32\smartscreenps.dll" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /ve /t REG_SZ /d "%windir%\SysWOW64\smartscreenps.dll" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /v "ThreadingModel" /t REG_SZ /d "Both" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32" /ve /t REG_SZ /d "%windir%\System32\smartscreen.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32" /ve /t REG_SZ /d "%windir%\SysWOW64\smartscreen.exe" /f>nul 2>&1
 :SkipRestoreSmartscreen
 %reg% delete "HKLM\SOFTWARE\Classes\exefile\shell\open" /v "NoSmartScreen" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Classes\exefile\shell\runas" /v "NoSmartScreen" /f>nul 2>&1
@@ -1045,7 +1049,7 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "SmartScreenEnabled" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /v "SecurityHealth" /t REG_BINARY /d "040000000000000000000000" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "SecurityHealth" /t REG_SZ /d "C:\Windows\system32\SecurityHealthSystray.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "SecurityHealth" /t REG_SZ /d "C:\WINDOWS\system32\SecurityHealthSystray.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\AutorunsDisabled" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /t REG_SZ /d "EPP" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked" /f>nul 2>&1
@@ -1097,9 +1101,14 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% query "HKLM\System\CurrentControlset\Services\WinDefend">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\WinDefend" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
 %reg% query "HKLM\System\CurrentControlset\Services\wscsvc">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\wscsvc" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
 %reg% query "HKLM\System\CurrentControlset\Services\wtd">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\wtd" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
-if exist "%pth%MySecurityDefaults.reg" (
+if exist "%save%MySecurityDefaults.reg" (
+	%msg% "Restore %save%MySecurityDefaults.reg" "Восстановление %save%MySecurityDefaults.reg"
+	%reg% import "%save%MySecurityDefaults.reg">nul 2>&1
+) else (
+	if exist "%pth%MySecurityDefaults.reg" (
 	%msg% "Restore %pth%MySecurityDefaults.reg" "Восстановление %pth%MySecurityDefaults.reg"
 	%reg% import "%pth%MySecurityDefaults.reg">nul 2>&1
+	)
 )
 exit /b
 
@@ -1110,7 +1119,7 @@ for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not 
 for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not errorlevel 1 (set winre=1))
 %ifnot% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутсвует Среда восстановления Windows или её невозвможно включить"&exit /b
 %reagentc% /boottore>nul 2>&1
-manage-bde -protectors c: -disable -rebootcount 2>nul 2>&1
+manage-bde -protectors c: -disable -rebootcount 1
 %msg% "The computer will now reboot intoWindows Recovery Environment" "Компьютер сейчас перезагрузиться в Среду восстановления Windows"
 %shutdown% -r -f -t 5
 %timeout% 4
@@ -1118,10 +1127,40 @@ exit /b
 
 :SAC
 reg load HKLM\sac c:\windows\system32\config\system
-reg add hklm\sac\controlset001\control\ci\policy /v VerifiedAndReputablePolicyState /t REG_DWORD /d {VALUE} /f 
-reg add hklm\sac\controlset001\control\ci\protected /v VerifiedAndReputablePolicyStateMinValueSeen /t REG_DWORD /d {VALUE} /f
-reg unload hklm\sac
+reg add HKLM\sac\controlset001\control\ci\policy /v VerifiedAndReputablePolicyState /t REG_DWORD /d 2 /f 
+reg add HKLM\sac\controlset001\control\ci\protected /v VerifiedAndReputablePolicyStateMinValueSeen /t REG_DWORD /d 2 /f
+reg unload HKLM\sac
 reg load HKLM\sac2 C:\windows\system32\config\SOFTWARE
-reg add "hklm\sac2\Microsoft\Windows Defender" /v SacLearningModeSwitch /t REG_DWORD /d 0
-reg unload hklm\sac2
+reg add "HKLM\sac2\Microsoft\Windows Defender" /v SacLearningModeSwitch /t REG_DWORD /d 0 /f
+reg unload HKLM\sac2
+exit
+
+:MiniHelp
+cls
+echo.
+%msg% "Group Policies" "Групповые политики"
+echo.
+%msg% "Legally. Documented. Incomplete." "Легально. Документированно. Неполноценно."
+%msg% "Only known group policies are applied through the registry" "Применяются только известные групповые политики через реестр"
+%msg% "Drivers, services, and background processes are active but do not perform any actions" "Драйверы, службы и фоновые процессы активны, но не выполняют никаких действий"
+echo.
+%msg% "Policies + Registry Settings" "Политики + Настройки реестра"
+echo.
+%msg% "Semi-legally. Almost complete." "Полулегально. Почти полноценно."
+%msg% "In addition to policies, known tweaks are applied to disable various protection aspects" "В дополнение к политикам применяются известные твики отключающие различные аспекты защит"
+%msg% "Only drivers and services are active in the background, performing no actions" "Только драйверы и службы активны в фоне, не выполняют никаких действий"
+echo.
+%msg% "Policies + Settings + Disabling Services and drivers" "Политики + Настройки + Отключение служб и драйверов"
+echo.
+%msg% "Illegally. Complete." "Нелегально. Полноценно."
+%msg% "Also disables the startup of all related services and drivers" "Также отключается запуск всех сопутствующих служб и драйверов"
+%msg% "No background activities" "Никаких фоновых активностей"
+echo.
+%msg% "Policies + Settings + Disabling Services and drivers + Block launch executables" "Политики + Настройки + Отключение служб и драйверов + Блокировка запуска"
+echo.
+%msg% "Hacker-style. Excessive." "По-хакерски. Избыточно."
+%msg% "Blocks the launch of known protection processes by assigning an incorrect debugger in the registry" "Блокируется запуск известных процессов защит с помощью назначения неправильного дебагера в реестре"
+%msg% "Helps reduce the risk of enabling the defender during a Windows update" "Помогает снизить риск включения защитника при обновлении Windows"
+echo.
+pause
 exit /b
