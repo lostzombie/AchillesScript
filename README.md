@@ -11,14 +11,15 @@ cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 
 ![English](https://img.shields.io/badge/Language-En-blue)&emsp;&emsp;![Russian](https://img.shields.io/badge/Language-Ru-blue)
 
-## &emsp;Terminal User Interface&emsp;/&emsp;Пользовательский интерфейс
+## &emsp;&emsp;&emsp;Terminal User Interface&emsp;/&emsp;Пользовательский интерфейс
   
 <img src="Media/tui_en.png" alt="Achilles' Script TUI En" width='400'> <img src="Media/tui_ru.png" alt="Achilles' Script TUI Ru" width='400'>
 
-## &emsp;&emsp;&emsp;Usage&emsp;/&emsp;Использование
-
 <table cellspacing="0" cellpadding="0">
-
+<tr>
+<th width="50%">Usage</th>
+<th width="50%">Использование</th>
+</tr>
 <tr><td>
 Execute the command from the header or download
 
