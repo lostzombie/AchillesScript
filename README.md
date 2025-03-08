@@ -17,7 +17,7 @@ cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 
 ## &emsp;&emsp;&emsp;Usage&emsp;/&emsp;Использование
 
-<table border="1" cellspacing="1" cellpadding="1">
+<table cellspacing="0" cellpadding="0">
 
 <tr><td>
 Execute the command from the header or download
