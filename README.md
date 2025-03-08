@@ -144,92 +144,75 @@ Using menu items without warnings:
 
 Policies
 
-```
-AchillesScript.cmd apply 1
-```
+`AchillesScript.cmd apply 1`
 
 Policies + Registry settings
 
-```
-AchillesScript.cmd apply 2
-```
+`AchillesScript.cmd apply 2`
 
 Policies + Settings + Disabling services
 
-```
-AchillesScript.cmd apply 3
-```
+`AchillesScript.cmd apply 3`
 
 Policies + Settings + disabling services + blocking startup
 
-```
-AchillesScript.cmd apply 4
-```
+`AchillesScript.cmd apply 4`
 
 Applying individual categories independently (for tests):
 
-```
-AchillesScript.cmd apply policies
-AchillesScript.cmd apply setting
-AchillesScript.cmd apply services
-AchillesScript.cmd apply block
-```
+`AchillesScript.cmd apply policies`
+
+`AchillesScript.cmd apply setting`
+
+`AchillesScript.cmd apply services`
+
+`AchillesScript.cmd apply block`
 
 Applying individual categories together to choose from (for tests):
 
-```
-AchillesScript.cmd multi policies services
-AchillesScript.cmd multi setting block
-AchillesScript.cmd multi setting services block
-```
+`AchillesScript.cmd multi policies services`
+
+`AchillesScript.cmd multi setting block`
+
+`AchillesScript.cmd multi setting services block`
 
 Restoring default settings:
 
-```AchillesScript.cmd restore```
+`AchillesScript.cmd restore`
 
 Additional functions:
 
 Blocking/unblocking process startup:
 
-```
-AchillesScript.cmd block process.exe
-AchillesScript.cmd unblock process.exe
-```
+`AchillesScript.cmd block process.exe`
+
+`AchillesScript.cmd unblock process.exe`
 
 Running with Trusted Installer privileges:
 
-```
-AchillesScript.cmd ti "path with space\process.exe"
-AchillesScript.cmd ti process.exe param1 param2
-```
+`AchillesScript.cmd ti "path with space\process.exe"`
+
+`AchillesScript.cmd ti process.exe param1 param2`
 
 Backup of current security settings:
 (generates MySecurityDefaults.reg with all keys affected by the script, 
 create a restore point if they are enabled, 
 launch a RegBackup event in the scheduler if it is configured)
 
-```
-AchillesScript.cmd backup
-```
+`AchillesScript.cmd backup`
 
 Reboot into safe mode:
 
-```
-AchillesScript.cmd safeboot
-```
+`AchillesScript.cmd safeboot`
 
 Reboot into the recovery environment, if available:
 
-```
-AchillesScript.cmd winre
-```
+`AchillesScript.cmd winre`
 
 For the recovery environment - 
 Enable Smart App Control:
 
-```
-AchillesScript.cmd sac
-```
+`AchillesScript.cmd sac`
 
 </td><td>
 
@@ -237,92 +220,75 @@ AchillesScript.cmd sac
 
 Политики
 
-```
-AchillesScript.cmd apply 1
-```
+`AchillesScript.cmd apply 1`
 
 Политики + настройки реестра
 
-```
-AchillesScript.cmd apply 2
-```
+`AchillesScript.cmd apply 2`
 
 Политики + настройки + отключение служб
 
-```
-AchillesScript.cmd apply 3
-```
+`AchillesScript.cmd apply 3`
 
 Политики + настройки + отключение служб + блокировка запуска
 
-```
-AchillesScript.cmd apply 4
-```
+`AchillesScript.cmd apply 4`
 
 Применение отдельных категорий независимо (для тестов):
 
-```
-AchillesScript.cmd apply policies
-AchillesScript.cmd apply setting
-AchillesScript.cmd apply services
-AchillesScript.cmd apply block
-```
+`AchillesScript.cmd apply policies`
+
+`AchillesScript.cmd apply setting`
+
+`AchillesScript.cmd apply services`
+
+`AchillesScript.cmd apply block`
 
 Применение отдельных категорий совместно на выбор (для тестов):
 
-```
-AchillesScript.cmd multi policies services
-AchillesScript.cmd multi setting block
-AchillesScript.cmd multi setting services block
-```
+`AchillesScript.cmd multi policies services`
+
+`AchillesScript.cmd multi setting block`
+
+`AchillesScript.cmd multi setting services block`
 
 Восстановление по настроек поумолчанию:
 
-```AchillesScript.cmd restore```
+`AchillesScript.cmd restore`
 
 Дополнительные функции:
 
 Блокировка/разблокировка запуска процесса:
 
-```
-AchillesScript.cmd block process.exe
-AchillesScript.cmd unblock process.exe
-```
+`AchillesScript.cmd block process.exe`
+
+`AchillesScript.cmd unblock process.exe`
 
 Запуск с привилегиями Trusted Installer:
 
-```
-AchillesScript.cmd ti "path with space\process.exe"
-AchillesScript.cmd ti process.exe param1 param2
-```
+`AchillesScript.cmd ti "path with space\process.exe"`
+
+`AchillesScript.cmd ti process.exe param1 param2`
 
 Бэкап текущих настроек безопасности: 
 (генерирует MySecurityDefaults.reg со всеми ключами затрагиваемыми скриптом, 
 cоздание точки восстановления если они включены, 
 запуск в планировщике события RegBackup, если оно настроено)
 
-```
-AchillesScript.cmd backup
-```
+`AchillesScript.cmd backup`
 
 Перезагрузить в безопасной режим:
 
-```
-AchillesScript.cmd safeboot
-```
+`AchillesScript.cmd safeboot`
 
 Перезагрузить в среду восстановления, если доступно:
 
-```
-AchillesScript.cmd winre
-```
+`AchillesScript.cmd winre`
 
 Для среды восстановлениия - 
 Включить Интеллектуальное управление приложениями:
 
-```
-AchillesScript.cmd sac
-```
+`AchillesScript.cmd sac`
 
 </td></tr>
 
