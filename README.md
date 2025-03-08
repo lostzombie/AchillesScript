@@ -17,15 +17,30 @@ cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 
 ## &emsp;&emsp;&emsp;Usage&emsp;/&emsp;Использование
 
-<table>
-<tr>
-<td>
-  
-Execute the command from the header or download [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
+<table border="1" cellspacing="1" cellpadding="1">
+
+<tr><td>
+
+Execute the command from the header or download
+
+[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
 
 > There are no dependencies. Online is not required.
 
 Just run it and select the appropriate item:
+
+</td><td>
+  
+Выполните комманду из заголовка или скачайте
+
+[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
+
+> Зависимостей нет. Онлайн не требуется.
+
+Просто запустите и выберите подходящий пункт:
+
+</td></tr>
+<tr><td>
 
  ##### 1. Group Policies
 
@@ -35,6 +50,19 @@ Just run it and select the appropriate item:
 >
 > Drivers, services, and background processes are active but do not perform any actions.
 
+</td><td>
+
+ ##### 1. Групповые политики
+
+> Легально. Документированно. Неполноценно.
+>
+> Применяются только известные групповые политики через реестр.
+>
+> Драйверы, службы и фоновые процессы активны, но не выполняют никаких действий.
+
+</td></tr>
+<tr><td>
+  
  ##### 2. Policies + Registry Settings
 
 > Semi-legally. Almost complete.
@@ -43,6 +71,19 @@ Just run it and select the appropriate item:
 >
 > Only drivers and services are active in the background, performing no actions.
 
+</td><td>
+
+ ##### 2. Политики + Настройки реестра
+
+> Полулегально. Почти полноценно.
+>
+> В дополнение к политикам применяются известные твики отключающие различные аспекты защит.
+>
+> Только драйверы и службы активны в фоне, не выполняют никаких действий.
+
+</td></tr>
+<tr><td>
+
  ##### 3. Policies + Settings + Disabling Services and drivers
 
 > Illegally. Complete.
@@ -50,6 +91,19 @@ Just run it and select the appropriate item:
 > Also disables the startup of all related services and drivers.
 >
 > No background activities.
+
+</td><td>
+
+ ##### 3. Политики + Настройки + Отключение служб и драйверов
+
+> Нелегально. Полноценно.
+>
+> Также отключается запуск всех сопутствующих служб и драйверов.
+>
+> Никаких фоновых активностей.
+
+</td></tr>
+<tr><td>
 
  ##### 4. Policies + Settings + Disabling Services and drivers + Block launch executables
 
@@ -61,40 +115,9 @@ Just run it and select the appropriate item:
 
  ##### It is recommended to repeat the application after major Windows updates.
 
-</td>
-<td>
+</td><td>
 
-Выполните комманду из заголовка или скачайте [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
-
-> Зависимостей нет. Онлайн не требуется.
-
-Просто запустите и выберите подходящий пункт:
-
- ##### 1. Групповые политики
-
-> Легально. Документированно. Неполноценно.
->
-> Применяются только известные групповые политики через реестр.
->
-> Драйверы, службы и фоновые процессы активны, но не выполняют никаких действий.
-
- ##### 2. Политики + Настройки реестра
-
-> Полулегально. Почти полноценно.
->
-> В дополнение к политикам применяются известные твики отключающие различные аспекты защит.
->
-> Только драйверы и службы активны в фоне, не выполняют никаких действий.
-
- ##### 3. Политики + Настройки + Отключение служб и драйверов
-
-> Нелегально. Полноценно.
->
-> Также отключается запуск всех сопутствующих служб и драйверов.
->
-> Никаких фоновых активностей.
-
- ##### 3. Политики + Настройки + Отключение служб и драйверов + Блокировка запуска
+ ##### 4. Политики + Настройки + Отключение служб и драйверов + Блокировка запуска
 
 > По-хакерски. Избыточно.
 >
@@ -104,8 +127,8 @@ Just run it and select the appropriate item:
 
  ##### Рекомендуется повторять примение после крупных обновлениий Windows.
 
-</td>
-</tr>
+</td></tr>
+
 </table>
 
 ## License&emsp;/&emsp;Лицензия
