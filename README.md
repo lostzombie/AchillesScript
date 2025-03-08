@@ -12,7 +12,7 @@ cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 
 ![English](https://img.shields.io/badge/Language-En-blue)&emsp;&emsp;![Russian](https://img.shields.io/badge/Language-Ru-blue)
 
-## Terminal User Interface
+## 💻Terminal User Interface
   
 <img src="Media/tui_en.png" alt="Achilles' Script TUI En" width='400'> <img src="Media/tui_ru.png" alt="Achilles' Script TUI Ru" width='400'>
 
