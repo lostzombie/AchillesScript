@@ -20,8 +20,11 @@ cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 <table>
 <tr>
 <td>
-Execute the command from the header or download AchillesScript.cmd.
-There are no dependencies. Online is not required.
+  
+##### Execute the command from the header or download 
+
+[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
+> ###### There are no dependencies. Online is not required.
 Just run it and select the appropriate item:
 
  ##### 1. Group Policies
@@ -57,10 +60,14 @@ Just run it and select the appropriate item:
 > ###### Helps reduce the risk of enabling the defender after Windows update.
 
  ##### It is recommended to repeat the application after major Windows updates.
+
 </td>
 <td>
-Выполните комманду из заголовка или скачайте AchillesScript.cmd.
-Зависимостей нет. Онлайн не требуется.
+
+ ##### Выполните комманду из заголовка или скачайте 
+ 
+[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
+> ###### Зависимостей нет. Онлайн не требуется.
 Просто запустите и выберите подходящий пункт:
 
  ##### 1. Групповые политики
@@ -95,7 +102,8 @@ Just run it and select the appropriate item:
 >
 > ###### Помогает снизить риск включения защитника после обновлении Windows.
 
- #### Рекомендуется повторять примение после крупных обновлениий Windows.
+ ##### Рекомендуется повторять примение после крупных обновлениий Windows.
+
 </td>
 </tr>
 </table>
