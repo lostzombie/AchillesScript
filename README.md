@@ -3,15 +3,16 @@
 <img src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
 
 # Achilles' Script
+&emsp;Disabling Windows Defender ⚡ Отключение Защитника Windows
 
-WIN+R 
+**WIN+R**
 ```
 cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 ```
 
 ![English](https://img.shields.io/badge/Language-En-blue)&emsp;&emsp;![Russian](https://img.shields.io/badge/Language-Ru-blue)
 
-## &emsp;&emsp;&emsp;Terminal User Interface&emsp;/&emsp;Пользовательский интерфейс
+## &emsp;&emsp;&emsp;Terminal User Interface&emsp;⚡&emsp;Пользовательский интерфейс
   
 <img src="Media/tui_en.png" alt="Achilles' Script TUI En" width='400'> <img src="Media/tui_ru.png" alt="Achilles' Script TUI Ru" width='400'>
 
@@ -130,6 +131,6 @@ It is recommended to repeat the application after major Windows updates.
 
 </table>
 
-## License&emsp;/&emsp;Лицензия
+## License&emsp;⚡&emsp;Лицензия
 
 [WTFPL v2](https://wtfpl2.com)
