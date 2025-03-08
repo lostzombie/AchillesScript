@@ -27,8 +27,8 @@ set "tiargs=%tiargs:~1%"
 set "msg=call :2LangMsg"
 set "err=call :2LangErr"
 set "errn=call :2LangErrNoPause"
-set "if=if defined"
-set "ifnot=if not defined"
+set "ifdef=if defined"
+set "ifNdef=if not defined"
 set "else=^|^|"
 set "then=^&^&"
 set L=ru
@@ -36,46 +36,46 @@ set isTrustedInstaller=
 set UserSettingDone=
 ::#############################################################################
 (%reg% query "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%reg% query "HKLM\SYSTEM\CurrentControlSet\Control\Nls\Language" /v Default|find "0x409">nul 2>&1) %then% (set Lang=%L%))
-%ifnot% Lang (title Achilles' Script) else (title Ахилесов Скрипт)
+%ifNdef% Lang (title Achilles' Script) else (title Ахилесов Скрипт)
 ::
-%whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%if% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
+%whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
 if not exist "%powershell%" %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
 dir "%windir%\system32\config\systemprofile">nul 2>&1||(%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/k', '%Script% %args%' -Verb RunAs&exit)
 echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write error in %pth%test.ps1" "Ошибка тестовой записи в %pth%test.ps1"&pause&exit)
 ::Args
-%if% arg1 (
+%ifdef% arg1 (
 	for %%i in (apply multi restore block unblock ti backup safeboot winre sac) do if [%arg1%]==[%%i] set "isValidArg=%%i"
-	%ifnot% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
+	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
 	set  isValidArg=
 )
 if exist "%pth%hkcu.txt" set UserSettingDone=1
-%ifnot% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
+%ifNdef% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
 if "%arg1%"=="apply" (
-	%ifnot% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
-	%if% arg2 for %%i in (1 2 3 4 6 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
-	%ifnot% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
-	%if% arg2 for %%i in (1 2 3 4 6) do if [%arg2%]==[%%i] call :Menu%%i
+	%ifNdef% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
+	%ifdef% arg2 for %%i in (1 2 3 4 6 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
+	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
+	%ifdef% arg2 for %%i in (1 2 3 4 6) do if [%arg2%]==[%%i] call :Menu%%i
 	if [%arg2%]==[policies] set Policies=1
 	if [%arg2%]==[setting]  set Registry=1
 	if [%arg2%]==[services] set Services=1
 	if [%arg2%]==[block]    set Block=1
 	call :MAIN
 )
-:multi
-set "multi=%~1"
-if "%arg1%"=="multi" (
-	%ifnot% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
+if "%arg1%" neq "multi" goto :SkipMulti
+	:multi
+	set "multi=%~1"
+	%ifNdef% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
 	set isValidArg=
-	%if% multi for %%i in (policies setting services block) do if [%multi%]==[%%i] set "isValidArg=%%i"
-	%ifnot% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
+	%ifdef% multi for %%i in (policies setting services block) do if [%multi%]==[%%i] set "isValidArg=%%i"
+	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
 	if [%isValidArg%]==[policies] set Policies=1
 	if [%isValidArg%]==[setting]  set Registry=1
 	if [%isValidArg%]==[services] set Services=1
 	if [%isValidArg%]==[block]    set Block=1
 	shift
-	if [%~1] neq [] goto :multi
-	call :MAIN
-)
+	if [%~1] == [] call :MAIN
+	goto :multi
+:SkipMulti
 if "%arg1%"=="restore" call :Menu6
 if "%arg1%"=="block"   if "%arg2%" neq "" (call :BlockProcess %arg2%&exit /b)
 if "%arg1%"=="unblock" if "%arg2%" neq "" (call :UnBlockProcess %arg2%&exit /b)
@@ -103,7 +103,7 @@ for /f "tokens=3 delims=." %%v in ('echo  %win%') do set /a "build=%%v"
 for /f "tokens=1 delims=." %%v in ('echo  %win%') do set /a "win=%%v"
 for /f "tokens=4" %%a in ('ver') do set "WindowsBuild=%%a"
 set "WindowsBuild=%WindowsBuild:~5,-1%"
-if [%win%] lss [10] %if% Lang (echo Этот скрипт разработан для Windows 10 и новее)&echo.&pause&exit else (echo This Script is designed for Windows 10 and newer)&echo.&pause&exit
+if [%win%] lss [10] %ifdef% Lang (echo Этот скрипт разработан для Windows 10 и новее)&echo.&pause&exit else (echo This Script is designed for Windows 10 and newer)&echo.&pause&exit
 for /f "tokens=3,*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName') do set "WindowsVersion=%%a %%b"
 if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
 ::#############################################################################
@@ -111,9 +111,9 @@ if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
 set isValidItem=
 set Item=
 call :Screen
-%ifnot% Lang (set /p Item="Enter menu item number using your keyboard [0-8]:") else (set /p Item="Введите номер пункта меню используя клавиатуру [0-6]:")
+%ifNdef% Lang (set /p Item="Enter menu item number using your keyboard [0-6]:") else (set /p Item="Введите номер пункта меню используя клавиатуру [0-6]:")
 for %%i in (1 2 3 4 5 6 0) do if [%Item%]==[%%i] set "isValidItem=%%i"
-%ifnot% isValidItem goto :BEGIN
+%ifNdef% isValidItem goto :BEGIN
 if [%Item%] == [0] exit
 call :Menu%Item%
 
@@ -137,37 +137,37 @@ goto :BEGIN
 :Menu6
 cls
 call :CheckTrusted||call :RestoreCurrentUser
-%ifnot% SAFEBOOT_OPTION call :Reboot2Safe
+%ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
 call :Restore
 call :Reboot2Normal
 exit
 
 :MAIN
-%ifnot% UserSettingDone (
-	%ifnot% arg1 call :Warning
+%ifNdef% UserSettingDone (
+	%ifNdef% arg1 call :Warning
 	call :Backup
-	%if% Policies call :PoliciesHKCU
-	%if% Registry call :RegistryHKCU
-	%ifnot% SAFEBOOT_OPTION call :Reboot2Safe
+	%ifdef% Policies call :PoliciesHKCU
+	%ifdef% Registry call :RegistryHKCU
+	%ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 )
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
 call :Backup
-%if% Policies call :Policies
-%if% Registry call :Registry
-%if% Services call :Services
-%if%    Block call :Block
+%ifdef% Policies call :Policies
+%ifdef% Registry call :Registry
+%ifdef% Services call :Services
+%ifdef%    Block call :Block
 call :Reboot2Normal
 exit
 ::#############################################################################
 :2LangMsg
-%if% Lang (echo %~2) else (echo %~1)
+%ifdef% Lang (echo %~2) else (echo %~1)
 exit /b
 :2LangErr
-(%if% Lang (echo %~2) else (echo %~1))&pause>nul 2>&1&exit
+(%ifdef% Lang (echo %~2) else (echo %~1))&pause>nul 2>&1&exit
 
 :2LangErrNoPause
-(%if% Lang (echo %~2) else (echo %~1))&exit /b 1
+(%ifdef% Lang (echo %~2) else (echo %~1))&exit /b 1
 
 :CheckTrusted
 dir "%SystemDrive%\System Volume Information">nul 2>&1&&exit /b 0||exit /b 1
@@ -180,29 +180,31 @@ if exist "%save%MySecurityDefaults.reg" (
 %msg% "Delete MySecurityDefaults.reg and restart the script if you want to create a new backup." "Удалите MySecurityDefaults.reg и перезапустите скрипт если хотите создать новый бэкап."
 echo.
 )
-%if% Policies (
+%ifdef% Policies (
 %msg% "Group policies will be applied to disable " "Будут применены групповые политики для отключения "
 %msg% "Windows Defender, SmartScreen, Kernel Isolation, SmartAppControl etc." "Защитника Windows, SmartScreen, Изоляции ядра, Интелектуального управления приложениями"
 if exist "%sysdir%\MRT.exe" %msg% "Disable updating and reporting for Malicious Software Removal Tool." "Отключено обновление и отчеты средства удаления вредоносных программ."
 echo.
 )
-%if% Registry (
+%ifdef% Registry (
 %msg% "Registry settings will be applied to disable" "Будут применены настройки реестра для отключения"
 %msg% "tasks in the scheduler, warnings for downloaded files, file explorer extensions" "задач в планировщике, предупреждения для скачанных файлов, расширения проводника"
 echo.
 )
-%if% Services %msg% "The launch of Defender services and drivers will be disabled." "Будет отключен запуск служб и драйверов защитника."&echo.
-%if%    Block %msg% "The launch of defender executable files will be blocked." "Будет заблокирован запуск исполняемых файлов защитника."&echo.
+%ifdef% Services %msg% "The launch of Defender services and drivers will be disabled." "Будет отключен запуск служб и драйверов защитника."&echo.
+%ifdef%    Block %msg% "The launch of defender executable files will be blocked." "Будет заблокирован запуск исполняемых файлов защитника."&echo.
 %msg% "The computer will be restarted twice, to safe mode and back." "Компьютер будет перезагружен дважды, в безопасный режим и обратно."&
 echo.
-%ifnot% Lang (choice /m "You really want to disable Windows defences" /c "yn") else (choice /m "Вы действительно хотите отключить защиты Windows?" /c "дн")
+%ifNdef% Lang (choice /m "You really want to disable Windows defences" /c "yn") else (choice /m "Вы действительно хотите отключить защиты Windows?" /c "дн")
 if [%errorlevel%]==[2] goto :BEGIN
 cls
 exit /b
 
 :Reboot2Safe
 %bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "cmd.exe /c \"%Script%\" apply %Item%" /f>nul 2>&1&&((%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell"|find "%Script%">nul 2>&1)||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit))||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit)
+set "BootArgs=%args%"
+%ifdef% Item set "BootArgs=apply %Item%"
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "cmd.exe /c \"%Script%\" %BootArgs%" /f>nul 2>&1&&((%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell"|find "%Script%">nul 2>&1)||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit))||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit)
 %reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend" /f>nul 2>&1
 %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
 %shutdown% -r -f -t 5
@@ -249,7 +251,7 @@ exit /b %trusted%
 :Backup 
 if exist "%save%MySecurityDefaults.reg" goto :EndBackup
 call :CheckTrusted&&goto :TrustedBackup
-%if% UserSettingDone goto :EndBackup
+%ifdef% UserSettingDone goto :EndBackup
 %msg% "Enabling the RegIdleBackup task in the scheduler..." "Включение задания RegIdleBackup в планировщике..."
 %schtasks% /Change /TN "Microsoft\Windows\Registry\RegIdleBackup" /Enable>nul 2>&1&&(echo OK&%msg% "Running RegIdleBackup task from the scheduler..." "Запуск задания RegIdleBackup из планировщика..."&%schtasks% /Run /I /TN "Microsoft\Windows\Registry\RegIdleBackup">nul 2>&1&&echo OK||%msg% "Skip" "Пропуск")||%msg% "Skip" "Пропуск"
 %msg% "Creating a recovery point if recovery is enabled..." "Создание точки восстановления, если восстановление включено..."
@@ -317,7 +319,7 @@ cls
                echo [36m│[96m ┴ ┴└─┴┴ ┴┴┴─┘┴─┘└─┘└─┘  └─┘└─┘┴└─┴┴   ┴ [0m [36m│[0m
 			   echo [36m│[96m                for Windows[0m               [36m│[0m
 			   echo [36m└──────────────────────────────────────────┘[0m
-%ifnot% Lang  (echo [96m Non distructive disabling Windows defenses[0m
+%ifNdef% Lang  (echo [96m Non distructive disabling Windows defenses[0m
 ) else (
                echo [96m Неразрушающее отключение защит Windows[0m
 )
@@ -714,7 +716,7 @@ set "HidePath=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
 for /f "usebackq tokens=2*" %%A in (`reg query "%HidePath%" /v "SettingsPageVisibility" 2^>nul`) do (
     set "SettingsPageVisibility=%%B"
 )
-%ifnot% SettingsPageVisibility %reg% add "%HidePath%" /v "SettingsPageVisibility" /t REG_SZ /d "hide:windowsdefender" /f>nul 2>&1
+%ifNdef% SettingsPageVisibility %reg% add "%HidePath%" /v "SettingsPageVisibility" /t REG_SZ /d "hide:windowsdefender" /f>nul 2>&1
 echo %SettingsPageVisibility% | find /i "windowsdefender">nul 2>&1&&goto :EndHideSetting
 %reg% add "%HidePath%" /v "SettingsPageVisibility" /t REG_SZ /d "%SettingsPageVisibility%;windowsdefender" /f>nul 2>&1
 :EndHideSetting
@@ -940,7 +942,7 @@ set "HidePath=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
 for /f "usebackq tokens=2*" %%A in (`reg query "%HidePath%" /v "SettingsPageVisibility" 2^>nul`) do (
     set "SettingsPageVisibility=%%B"
 )
-%ifnot% SettingsPageVisibility goto :SkipRestoreVisibility
+%ifNdef% SettingsPageVisibility goto :SkipRestoreVisibility
 echo %SettingsPageVisibility% | find /i "windowsdefender">nul 2>&1&&goto :SkipRestoreVisibility
 set SettingsPageVisibility=%SettingsPageVisibility:windowsdefender;=%
 set SettingsPageVisibility=%SettingsPageVisibility:windowsdefender=%
@@ -952,7 +954,7 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% add "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /ve /t REG_SZ /d "%windir%\System32\smartscreenps.dll" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /v "ThreadingModel" /t REG_SZ /d "Both" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32" /ve /t REG_SZ /d "%windir%\System32\smartscreen.exe" /f>nul 2>&1
-%ifnot% ProgramFiles(x86) goto :SkipRestoreSmartscreen
+%ifNdef% ProgramFiles(x86) goto :SkipRestoreSmartscreen
 %reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /ve /t REG_SZ /d "SmartScreen" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /v "AppID" /t REG_SZ /d "{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /ve /t REG_SZ /d "%windir%\SysWOW64\smartscreenps.dll" /f>nul 2>&1
@@ -1115,9 +1117,9 @@ exit /b
 :WinRE
 set winre=
 for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not errorlevel 1 (set winre=1))
-%ifnot% winre %reagentc% /enable>nul 2>&1
+%ifNdef% winre %reagentc% /enable>nul 2>&1
 for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not errorlevel 1 (set winre=1))
-%ifnot% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутсвует Среда восстановления Windows или её невозвможно включить"&exit /b
+%ifNdef% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутсвует Среда восстановления Windows или её невозвможно включить"&exit /b
 %reagentc% /boottore>nul 2>&1
 manage-bde -protectors c: -disable -rebootcount 1
 %msg% "The computer will now reboot intoWindows Recovery Environment" "Компьютер сейчас перезагрузиться в Среду восстановления Windows"
