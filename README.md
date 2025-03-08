@@ -138,9 +138,12 @@ It is recommended to repeat the application after major Windows updates.
 <th width="50%">Usage</th>
 <th width="50%">Использование</th>
 </tr>
-<tr><td>
+<tr>
+<td>
 
-Using menu items without warnings:
+Using menu items
+
+without warnings:
 
 Policies
 
@@ -157,6 +160,31 @@ Policies + Settings + Disabling services
 Policies + Settings + disabling services + blocking startup
 
 `AchillesScript.cmd apply 4`
+
+</td><td>
+
+Применение пунктов меню
+
+без предупреждений:
+
+Политики
+
+`AchillesScript.cmd apply 1`
+
+Политики + настройки реестра
+
+`AchillesScript.cmd apply 2`
+
+Политики + настройки + отключение служб
+
+`AchillesScript.cmd apply 3`
+
+Политики + настройки + отключение служб + блокировка запуска
+
+`AchillesScript.cmd apply 4`
+
+</td></tr>
+<tr><td>
 
 Applying individual categories independently (for tests):
 
@@ -176,13 +204,45 @@ Applying individual categories together to choose from (for tests):
 
 `AchillesScript.cmd multi setting services block`
 
+</td><td>
+
+Применение отдельных категорий независимо (для тестов):
+
+`AchillesScript.cmd apply policies`
+
+`AchillesScript.cmd apply setting`
+
+`AchillesScript.cmd apply services`
+
+`AchillesScript.cmd apply block`
+
+Применение отдельных категорий совместно на выбор (для тестов):
+
+`AchillesScript.cmd multi policies services`
+
+`AchillesScript.cmd multi setting block`
+
+`AchillesScript.cmd multi setting services block`
+
+</td></tr>
+<tr><td>
+
 Restoring default settings:
 
 `AchillesScript.cmd restore`
 
+</td><td>
+
+Восстановление по настроек поумолчанию:
+
+`AchillesScript.cmd restore`
+
+</td></tr>
+<tr><td>
+
 Additional functions:
 
-Blocking/unblocking process startup:
+Blocking / unblocking process startup:
 
 `AchillesScript.cmd block process.exe`
 
@@ -216,49 +276,9 @@ Enable Smart App Control:
 
 </td><td>
 
-Применение пунктов меню без предупреждений:
-
-Политики
-
-`AchillesScript.cmd apply 1`
-
-Политики + настройки реестра
-
-`AchillesScript.cmd apply 2`
-
-Политики + настройки + отключение служб
-
-`AchillesScript.cmd apply 3`
-
-Политики + настройки + отключение служб + блокировка запуска
-
-`AchillesScript.cmd apply 4`
-
-Применение отдельных категорий независимо (для тестов):
-
-`AchillesScript.cmd apply policies`
-
-`AchillesScript.cmd apply setting`
-
-`AchillesScript.cmd apply services`
-
-`AchillesScript.cmd apply block`
-
-Применение отдельных категорий совместно на выбор (для тестов):
-
-`AchillesScript.cmd multi policies services`
-
-`AchillesScript.cmd multi setting block`
-
-`AchillesScript.cmd multi setting services block`
-
-Восстановление по настроек поумолчанию:
-
-`AchillesScript.cmd restore`
-
 Дополнительные функции:
 
-Блокировка/разблокировка запуска процесса:
+Блокировка / разблокировка запуска процесса:
 
 `AchillesScript.cmd block process.exe`
 
