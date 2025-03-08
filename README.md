@@ -204,7 +204,9 @@ AchillesScript.cmd ti process.exe param1 param2
 ```
 
 Backup of current security settings:
-(generates MySecurityDefaults.reg with all keys affected by the script, create a restore point if they are enabled, launch a RegBackup event in the scheduler if it is configured)
+(generates MySecurityDefaults.reg with all keys affected by the script, 
+create a restore point if they are enabled, 
+launch a RegBackup event in the scheduler if it is configured)
 
 ```
 AchillesScript.cmd backup
@@ -222,7 +224,8 @@ Reboot into the recovery environment, if available:
 AchillesScript.cmd winre
 ```
 
-For the recovery environment, Enable Smart App Control:
+For the recovery environment - 
+Enable Smart App Control:
 
 ```
 AchillesScript.cmd sac
@@ -294,7 +297,9 @@ AchillesScript.cmd ti process.exe param1 param2
 ```
 
 Бэкап текущих настроек безопасности: 
-(генерирует MySecurityDefaults.reg со всеми ключами затрагиваемыми скриптом, cоздание точки восстановления если они включены, запуск в планировщике события RegBackup, если оно настроено)
+(генерирует MySecurityDefaults.reg со всеми ключами затрагиваемыми скриптом, 
+cоздание точки восстановления если они включены, 
+запуск в планировщике события RegBackup, если оно настроено)
 
 ```
 AchillesScript.cmd backup
@@ -312,7 +317,8 @@ AchillesScript.cmd safeboot
 AchillesScript.cmd winre
 ```
 
-Для среды восстановлениия - Включить Интеллектуальное управление приложениями:
+Для среды восстановлениия - 
+Включить Интеллектуальное управление приложениями:
 
 ```
 AchillesScript.cmd sac
