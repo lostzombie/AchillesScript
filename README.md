@@ -20,7 +20,6 @@ cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 <table border="1" cellspacing="1" cellpadding="1">
 
 <tr><td>
-
 Execute the command from the header or download
 
 [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
@@ -30,7 +29,6 @@ Execute the command from the header or download
 Just run it and select the appropriate item:
 
 </td><td>
-  
 Выполните комманду из заголовка или скачайте
 
 [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
@@ -42,7 +40,7 @@ Just run it and select the appropriate item:
 </td></tr>
 <tr><td>
 
- ##### 1. Group Policies
+1. Group Policies
 
 > Legally. Documented. Incomplete.]
 >
@@ -52,7 +50,7 @@ Just run it and select the appropriate item:
 
 </td><td>
 
- ##### 1. Групповые политики
+1. Групповые политики
 
 > Легально. Документированно. Неполноценно.
 >
@@ -62,8 +60,8 @@ Just run it and select the appropriate item:
 
 </td></tr>
 <tr><td>
-  
- ##### 2. Policies + Registry Settings
+
+2. Policies + Registry Settings
 
 > Semi-legally. Almost complete.
 >
@@ -71,9 +69,9 @@ Just run it and select the appropriate item:
 >
 > Only drivers and services are active in the background, performing no actions.
 
-</td><td>
+</td><td> 
 
- ##### 2. Политики + Настройки реестра
+2. Политики + Настройки реестра
 
 > Полулегально. Почти полноценно.
 >
@@ -84,7 +82,7 @@ Just run it and select the appropriate item:
 </td></tr>
 <tr><td>
 
- ##### 3. Policies + Settings + Disabling Services and drivers
+3. Policies + Settings + Disabling Services and drivers
 
 > Illegally. Complete.
 >
@@ -94,7 +92,7 @@ Just run it and select the appropriate item:
 
 </td><td>
 
- ##### 3. Политики + Настройки + Отключение служб и драйверов
+3. Политики + Настройки + Отключение служб и драйверов
 
 > Нелегально. Полноценно.
 >
@@ -105,7 +103,7 @@ Just run it and select the appropriate item:
 </td></tr>
 <tr><td>
 
- ##### 4. Policies + Settings + Disabling Services and drivers + Block launch executables
+4. Policies + Settings + Disabling Services and drivers + Block launch executables
 
 > Hacker-style. Excessive.
 >
@@ -113,11 +111,11 @@ Just run it and select the appropriate item:
 >
 > Helps reduce the risk of enabling the defender after Windows update.
 
- ##### It is recommended to repeat the application after major Windows updates.
+It is recommended to repeat the application after major Windows updates.
 
 </td><td>
 
- ##### 4. Политики + Настройки + Отключение служб и драйверов + Блокировка запуска
+4. Политики + Настройки + Отключение служб и драйверов + Блокировка запуска
 
 > По-хакерски. Избыточно.
 >
@@ -125,7 +123,7 @@ Just run it and select the appropriate item:
 >
 > Помогает снизить риск включения защитника после обновлении Windows.
 
- ##### Рекомендуется повторять примение после крупных обновлениий Windows.
+Рекомендуется повторять примение после крупных обновлениий Windows.
 
 </td></tr>
 
