@@ -325,7 +325,7 @@ cls
                echo [96m Неразрушающее отключение защит Windows[0m
 )
 			   echo [36m┌────────────────────────────┬─────────────┐[0m
-               echo [36m│[0m [92mMade with love of Windows*[0m [36m│   [0m[93mver 1.0[0m   [36m│[0m
+               echo [36m│[0m [92mMade with love of Windows*[0m [36m│   [0m[93mver 1.1[0m   [36m│[0m
 			   echo [36m└────────────────────────────┴─────────────┘[0m		
                echo [90m *pure unprotected love[0m
 		   
