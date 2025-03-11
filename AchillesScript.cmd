@@ -1,4 +1,5 @@
 ::https://github.com/lostzombie/AchillesScript
+::v1.1.0
 @echo off
 cls&chcp 65001>nul 2>&1&color 0F
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
@@ -433,27 +434,43 @@ echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Spynet,SubmitSamplesConsent>>"%pt
 echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR,EnableASRConsumers>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access,EnableControlledFolderAccess>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection,EnableNetworkProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-d.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe_bd.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-d.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe_bd.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCmdRun.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDefenderCoreService.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsMpEng.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MRT.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe,Debugger>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe,Debugger>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-d.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe_bd.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-d.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe_bd.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCmdRun.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCopyAccelerator.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDefenderCoreService.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpCmd.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpService.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpextms.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MRT.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsMpEng.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseGPParser.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIdentity.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseImdsCollector.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIR.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseNdr.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseSampleUploader.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseTVM.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Svchost,WebThreatDefense>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost,EnableWebContentEvaluation>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer,AicEnabled>>"%pth%hklm.list"
@@ -876,17 +893,8 @@ exit /b
 
 :Block
 %msg% "Block process launch via fake Debugger" "Блокировка запуска процессов через поддельный отладчик"
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCmdRun.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsMpEng.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDefenderCoreService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
@@ -896,6 +904,31 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCmdRun.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCopyAccelerator.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDefenderCoreService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpCmd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpextms.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsMpEng.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseGPParser.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIdentity.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseImdsCollector.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIR.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseNdr.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseSampleUploader.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseTVM.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1&1
 if exist "%sysdir%\MRT.exe" %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MRT.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 exit /b
 
@@ -1026,6 +1059,8 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR" /v "EnableASRConsumers" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t REG_DWORD /d "0" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe" /f>nul 2>&1
@@ -1036,15 +1071,31 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe_bd.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCmdRun.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCopyAccelerator.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDefenderCoreService.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpCmd.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpService.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpextms.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsMpEng.exe" /v "Debugger" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe" /v "Debugger" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseGPParser.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIdentity.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseImdsCollector.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIR.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseNdr.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseSampleUploader.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseTVM.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MRT.exe" /v "Debugger" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Svchost" /v "WebThreatDefense" /t REG_SZ /d "webthreatdefsvc" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" /v "EnableWebContentEvaluation" /t REG_DWORD /d "1" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "AicEnabled" /f>nul 2>&1
