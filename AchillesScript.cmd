@@ -1,5 +1,5 @@
 ::https://github.com/lostzombie/AchillesScript
-::v1.1.0
+::v1.2.0
 @echo off
 cls&chcp 65001>nul 2>&1&color 0F
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
@@ -49,10 +49,12 @@ echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write err
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
 	set  isValidArg=
 )
-if exist "%pth%hkcu.txt" set UserSettingDone=1
-%ifNdef% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
+(%reg% query "HKLM\Software\AchillesScript">nul 2>&1) %then% (%reg% query "HKLM\Software\AchillesScript" /v "UserSettingDone"|find "1">nul 2>&1) %then% (set UserSettingDone=1)>nul 2>&1
+%ifNdef% arg1 (
+	if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
+	%ifNdef% SAFEBOOT_OPTION call :UserSettingDone
+)
 if "%arg1%"=="apply" (
-	%ifNdef% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
 	%ifdef% arg2 for %%i in (1 2 3 4 6 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
 	%ifdef% arg2 for %%i in (1 2 3 4 6) do if [%arg2%]==[%%i] call :Menu%%i
@@ -65,7 +67,6 @@ if "%arg1%"=="apply" (
 if "%arg1%" neq "multi" goto :SkipMulti
 	:multi
 	set "multi=%~1"
-	%ifNdef% SAFEBOOT_OPTION if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
 	set isValidArg=
 	%ifdef% multi for %%i in (policies setting services block) do if [%multi%]==[%%i] set "isValidArg=%%i"
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
@@ -88,16 +89,17 @@ if "%arg1%"=="backup"  (
 	exit /b
 )
 if "%arg1%"=="safeboot" (
-  %bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
-  %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
-  %shutdown% -r -f -t 5
-  %timeout% 4
-  exit
+	call :SafeBoot
+	%msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
+	%shutdown% -r -f -t 5
+	%timeout% 4
+	exit
 )
 if "%arg1%"=="winre"  call :WinRE&exit /b
 if "%arg1%"=="sac"    call :SAC&exit /b
 if "%arg1%" neq "" %err% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&pause&exit
 ::
+
 %msg% "Determining the Windows version..." "Определение версии Windows..."
 for /f "tokens=4 delims= " %%v in ('ver') do set "win=%%v"
 for /f "tokens=3 delims=." %%v in ('echo  %win%') do set /a "build=%%v"
@@ -137,8 +139,8 @@ call :MiniHelp
 goto :BEGIN
 :Menu6
 cls
-call :CheckTrusted||call :RestoreCurrentUser
 %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
+call :CheckTrusted||call :RestoreCurrentUser
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
 call :Restore
 call :Reboot2Normal
@@ -147,13 +149,16 @@ exit
 :MAIN
 %ifNdef% UserSettingDone (
 	%ifNdef% arg1 call :Warning
-	call :Backup
-	%ifdef% Policies call :PoliciesHKCU
-	%ifdef% Registry call :RegistryHKCU
+	%ifNdef% SAFEBOOT_OPTION call :CheckTrusted||call :Backup
+	%ifdef% Policies call :CheckTrusted||call :PoliciesHKCU
+	%ifdef% Registry call :CheckTrusted||call :RegistryHKCU
 	%ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 )
+%ifdef% Item set "args=apply %Item%"
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
+cls
 call :Backup
+call :UserSettingDone
 %ifdef% Policies call :Policies
 %ifdef% Registry call :Registry
 %ifdef% Services call :Services
@@ -194,7 +199,8 @@ echo.
 )
 %ifdef% Services %msg% "The launch of Defender services and drivers will be disabled." "Будет отключен запуск служб и драйверов защитника."&echo.
 %ifdef%    Block %msg% "The launch of defender executable files will be blocked." "Будет заблокирован запуск исполняемых файлов защитника."&echo.
-%msg% "The computer will be restarted twice, to safe mode and back." "Компьютер будет перезагружен дважды, в безопасный режим и обратно."&
+%ifNdef% SAFEBOOT_OPTION %msg% "The computer will be restarted twice, to safe mode and back." "Компьютер будет перезагружен дважды, в безопасный режим и обратно."
+%ifdef% SAFEBOOT_OPTION %msg% "The computer will be restarted." "Компьютер будет перезагружен."
 echo.
 %ifNdef% Lang (choice /m "You really want to disable Windows defences" /c "yn") else (choice /m "Вы действительно хотите отключить защиты Windows?" /c "дн")
 if [%errorlevel%]==[2] goto :BEGIN
@@ -202,20 +208,18 @@ cls
 exit /b
 
 :Reboot2Safe
-%bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
+%reg% copy "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend_off" /s /f>nul 2>&1
+%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" /f>nul 2>&1
+call :SafeBoot
 set "BootArgs=%args%"
 %ifdef% Item set "BootArgs=apply %Item%"
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "cmd.exe /c \"%Script%\" %BootArgs%" /f>nul 2>&1&&((%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell"|find "%Script%">nul 2>&1)||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit))||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit)
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "cmd.exe /c start \"\" /max /realtime \"%Script%\" %BootArgs%" /f>nul 2>&1&&((%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell"|find "%Script%">nul 2>&1)||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit))||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit)
 %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
 %shutdown% -r -f -t 5
 %timeout% 4
 exit
 
 :Reboot2Normal
-%msg% "Restore default boot parameters..." "Восстановление параметров загрузки по умолчанию..."
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "explorer.exe" /f>nul 2>&1
-%bcdedit% /deletevalue {default} safeboot>nul 2>&1
 %msg% "The computer will now reboot into default mode." "Компьютер сейчас перезагрузиться в обычный режим."
 %shutdown% -r -f -t 5
 %timeout% 4
@@ -267,7 +271,7 @@ goto :EndBackup
 call :HKLM_List
 call :BackupReg "hklm.list" "hklm.txt"
 del /f/q "%pth%hklm.list">nul 2>&1
-copy /b "%pth%hkcu.txt"+"%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1
+if exist "%pth%hkcu.txt" (copy /b "%pth%hkcu.txt"+"%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1) else (move /y "%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1)
 del /f/q "%pth%hkcu.txt">nul 2>&1
 del /f/q "%pth%hklm.txt">nul 2>&1
 %msg% "The current settings are saved in %save%MySecurityDefaults.reg" "Текущие настройки сохранены в %save%MySecurityDefaults.reg"
@@ -281,6 +285,7 @@ echo $I="%pth%%~1">>%out%
 echo $F="%pth%%~2">>%out%
 echo $O=New-Object System.Text.StringBuilder>>%out%
 echo if($F -ne "%pth%hklm.txt"){$O.AppendLine("Windows Registry Editor Version 5.00")^|Out-Null}>>%out%
+echo if($F -eq "%pth%hklm.txt"){if(![System.IO.File]::Exists("%pth%hkcu.txt")){$O.AppendLine("Windows Registry Editor Version 5.00")^|Out-Null}}>>%out%
 echo $O.AppendLine("")^|Out-Null>>%out%
 echo Get-Content -Path $I^|ForEach-Object{$l=$_.Trim()>>%out%
 echo if($l -eq ""){return}>>%out%
@@ -325,7 +330,7 @@ cls
                echo [96m Неразрушающее отключение защит Windows[0m
 )
 			   echo [36m┌────────────────────────────┬─────────────┐[0m
-               echo [36m│[0m [92mMade with love of Windows*[0m [36m│   [0m[93mver 1.1[0m   [36m│[0m
+               echo [36m│[0m [92mMade with love of Windows*[0m [36m│   [0m[93mver 1.2[0m   [36m│[0m
 			   echo [36m└────────────────────────────┴─────────────┘[0m		
                echo [90m *pure unprotected love[0m
 		   
@@ -358,6 +363,7 @@ echo HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments,ScanWi
 echo HKCU:\Software\Policies\Microsoft\Edge,SmartScreenEnabled>>"%pth%hkcu.list"
 echo HKCU:\Software\Policies\Microsoft\Edge,SmartScreenPuaEnabled>>"%pth%hkcu.list"
 echo HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend>>"%pth%hkcu.list"
+echo HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend_off>>"%pth%hkcu.list"
 exit /b
 
 :HKLM_List
@@ -436,6 +442,7 @@ echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Co
 echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection,EnableNetworkProtection>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\defenderbootstrapper.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe>>"%pth%hklm.list"
@@ -457,8 +464,11 @@ echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Opt
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\secinit.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecureKernel.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthHost.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe>>"%pth%hklm.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthSystray.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe>>"%pth%hklm.list"
@@ -622,10 +632,17 @@ echo HKLM:\System\CurrentControlset\Services\WdFilter,Start>>"%pth%hklm.list"
 echo HKLM:\System\CurrentControlset\Services\MsSecCore,Start>>"%pth%hklm.list"
 exit /b
 
+:UserSettingDone
+%reg% delete "HKLM\Software\AchillesScript" /f>nul 2>&1
+set UserSettingDone=
+exit /b
+
 :PoliciesHKCU
 %msg% "Applying policies for the current user..." "Применение политик для текущего пользователя..."
 %reg% add "HKCU\Software\Policies\Microsoft\Edge" /v "SmartScreenEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
 %reg% add "HKCU\Software\Policies\Microsoft\Edge" /v "SmartScreenPuaEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
+%reg% add "HKLM\Software\AchillesScript" /v "UserSettingDone" /t REG_DWORD /d 1 /f>nul 2>&1
+set UserSettingDone=1
 exit /b
 
 :Policies
@@ -895,6 +912,7 @@ exit /b
 %msg% "Block process launch via fake Debugger" "Блокировка запуска процессов через поддельный отладчик"
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\defenderbootstrapper.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
@@ -915,8 +933,11 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\secinit.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecureKernel.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthHost.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthSystray.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
@@ -928,7 +949,7 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseSampleUploader.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseTVM.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 if exist "%sysdir%\MRT.exe" %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MRT.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
 exit /b
 
@@ -1061,6 +1082,7 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t REG_DWORD /d "0" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\defenderbootstrapper.exe>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe" /f>nul 2>&1
@@ -1081,8 +1103,11 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe" /v "Debugger" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecHealthUI.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\secinit.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecureKernel.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthHost.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthSystray.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe" /f>nul 2>&1
@@ -1163,6 +1188,26 @@ if exist "%save%MySecurityDefaults.reg" (
 	%reg% import "%pth%MySecurityDefaults.reg">nul 2>&1
 	)
 )
+exit /b
+
+:SafeBoot
+del /f /q "%pth%boot.cmd">nul 2>&1
+set windefend=
+for /f "tokens=3 delims= " %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" 2^>^&1') do set "userinit=%%a"
+for /f "tokens=3 delims= " %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" 2^>^&1') do set "usershell=%%a"
+(%reg% query "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend">nul 2>&1) %then% (set windefend=1)
+%bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" /t REG_SZ /d "%userinit%\"%pth%boot.cmd\"" /f>nul 2>&1
+echo bcdedit /deletevalue {default} safeboot>"%pth%boot.cmd"
+echo reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" /t REG_SZ /d "%userinit%" /f>>"%pth%boot.cmd"
+echo reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "%usershell%" /f>>"%pth%boot.cmd"
+%ifdef% windefend (
+%reg% copy "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend_off" /s /f>nul 2>&1
+%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" /f>nul 2>&1
+echo reg copy "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend_off" "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" /s /f>>"%pth%boot.cmd"
+echo reg delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend_off" /f>>"%pth%boot.cmd"
+)
+echo del /f /q "%pth%boot.cmd">>"%pth%boot.cmd"
 exit /b
 
 :WinRE
