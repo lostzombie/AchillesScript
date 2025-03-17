@@ -1,5 +1,5 @@
 ::https://github.com/lostzombie/AchillesScript
-::v1.2.0
+::v1.3.0
 @echo off
 cls&chcp 65001>nul 2>&1&color 0F
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
@@ -16,6 +16,7 @@ set "shutdown=%sysdir%\shutdown.exe"
 set "timeout=%sysdir%\timeout.exe"
 set "reagentc=%sysdir%\reagentc.exe"
 set "Script=%~dpnx0"
+set ScriptPS=\"%~dpnx0\"
 set "pth=%~dp0"
 set "save=%pth%"
 if "%pth%"=="%tmp%" for /f "usebackq tokens=1,2,*" %%B in (`%reg% query "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v Desktop`) do set save=%%D\
@@ -41,11 +42,11 @@ set UserSettingDone=
 ::
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
 if not exist "%powershell%" %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
-dir "%windir%\system32\config\systemprofile">nul 2>&1||(%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/k', '%Script% %args%' -Verb RunAs&exit)
+dir "%windir%\system32\config\systemprofile">nul 2>&1||(%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/k', '%ScriptPS% %args%' -Verb RunAs&exit)
 echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write error in %pth%test.ps1" "Ошибка тестовой записи в %pth%test.ps1"&pause&exit)
 ::Args
 %ifdef% arg1 (
-	for %%i in (apply multi restore block unblock ti backup safeboot winre sac) do if [%arg1%]==[%%i] set "isValidArg=%%i"
+	for %%i in (apply multi restore block unblock ti backup safeboot winre sac uwpoff uwpon) do if [%arg1%]==[%%i] set "isValidArg=%%i"
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
 	set  isValidArg=
 )
@@ -97,6 +98,8 @@ if "%arg1%"=="safeboot" (
 )
 if "%arg1%"=="winre"  call :WinRE&exit /b
 if "%arg1%"=="sac"    call :SAC&exit /b
+if "%arg1%"=="uwpoff" if "%arg2%" neq "" (call :BlockUWP %arg2%&exit /b)
+if "%arg1%"=="uwpon"  if "%arg2%" neq "" (call :UnBlockUWP %arg2%&exit /b)
 if "%arg1%" neq "" %err% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&pause&exit
 ::
 
@@ -139,6 +142,7 @@ call :MiniHelp
 goto :BEGIN
 :Menu6
 cls
+%msg% "Restore defaults..." "Восстановление по умолчанию..."
 %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 call :CheckTrusted||call :RestoreCurrentUser
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
@@ -164,7 +168,6 @@ call :UserSettingDone
 %ifdef% Services call :Services
 %ifdef%    Block call :Block
 call :Reboot2Normal
-exit
 ::#############################################################################
 :2LangMsg
 %ifdef% Lang (echo %~2) else (echo %~1)
@@ -253,7 +256,7 @@ set "trusted=%errorlevel%">nul 2>&1
 del /f /q "%pth%ti.ps1">nul 2>&1
 exit /b %trusted%
 
-:Backup 
+:Backup
 if exist "%save%MySecurityDefaults.reg" goto :EndBackup
 call :CheckTrusted&&goto :TrustedBackup
 %ifdef% UserSettingDone goto :EndBackup
@@ -274,13 +277,14 @@ del /f/q "%pth%hklm.list">nul 2>&1
 if exist "%pth%hkcu.txt" (copy /b "%pth%hkcu.txt"+"%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1) else (move /y "%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1)
 del /f/q "%pth%hkcu.txt">nul 2>&1
 del /f/q "%pth%hklm.txt">nul 2>&1
-%msg% "The current settings are saved in %save%MySecurityDefaults.reg" "Текущие настройки сохранены в %save%MySecurityDefaults.reg"
+%msg% "The current settings are saved in MySecurityDefaults.reg" "Текущие настройки сохранены в MySecurityDefaults.reg"
 :EndBackup
 exit /b
 
 :BackupReg
 set out="%pth%backup.ps1"
 del /f/q %out%>nul 2>&1
+%powershell% -ExecutionPolicy Bypass -c "[io.file]::WriteAllText('%pth%backup.ps1','',[System.Text.Encoding]::UTF8)"
 echo $I="%pth%%~1">>%out%
 echo $F="%pth%%~2">>%out%
 echo $O=New-Object System.Text.StringBuilder>>%out%
@@ -330,7 +334,7 @@ cls
                echo [96m Неразрушающее отключение защит Windows[0m
 )
 			   echo [36m┌────────────────────────────┬─────────────┐[0m
-               echo [36m│[0m [92mMade with love of Windows*[0m [36m│   [0m[93mver 1.2[0m   [36m│[0m
+               echo [36m│[0m [92mMade with love of Windows*[0m [36m│   [0m[93mver 1.3[0m   [36m│[0m
 			   echo [36m└────────────────────────────┴─────────────┘[0m		
                echo [90m *pure unprotected love[0m
 		   
@@ -364,6 +368,8 @@ echo HKCU:\Software\Policies\Microsoft\Edge,SmartScreenEnabled>>"%pth%hkcu.list"
 echo HKCU:\Software\Policies\Microsoft\Edge,SmartScreenPuaEnabled>>"%pth%hkcu.list"
 echo HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend>>"%pth%hkcu.list"
 echo HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend_off>>"%pth%hkcu.list"
+call :ListUWP sechealth
+call :ListUWP chxapp
 exit /b
 
 :HKLM_List
@@ -630,6 +636,20 @@ echo HKLM:\System\CurrentControlset\Services\wtd,Start>>"%pth%hklm.list"
 echo HKLM:\System\CurrentControlset\Services\WdBoot,Start>>"%pth%hklm.list"
 echo HKLM:\System\CurrentControlset\Services\WdFilter,Start>>"%pth%hklm.list"
 echo HKLM:\System\CurrentControlset\Services\MsSecCore,Start>>"%pth%hklm.list"
+exit /b 
+
+:ListUWP
+set "UWP=%~1"
+set UwpName=
+set UwpPath=
+for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
+for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
+if not defined UwpName exit /b
+if not exist "%UwpPath%" exit /b
+echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%>>"%pth%hkcu.list"
+echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%>>"%pth%hkcu.list"
+for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
+for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
 exit /b
 
 :UserSettingDone
@@ -775,6 +795,8 @@ exit /b
 %reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments" /v "ScanWithAntiVirus" /t REG_DWORD /d 1 /f>nul 2>&1
 ::
 %reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
+call :BlockUWP sechealth
+call :BlockUWP chxapp
 exit /b
 
 :Registry
@@ -896,7 +918,20 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "SmartScreenEnabled" /t REG_SZ /d "Off" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "AicEnabled" /t REG_SZ /d "Anywhere" /f>nul 2>&1
 ::
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend" /f>nul 2>&1
+exit /b
+
+:BlockUWP
+set "UWP=%~1"
+set UwpName=
+set UwpPath=
+for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
+for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
+if not defined UwpName exit /b
+if not exist "%UwpPath%" exit /b
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
+%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
 exit /b
 
 :Services
@@ -965,6 +1000,7 @@ if %errorlevel%==1 %reg% delete "%unbl%" /f>nul 2>&1
 exit /b %errorlevel%
 
 :RestoreCurrentUser
+%msg% "Restore default setting for current user..." "Восстановление настроек по умолчанию для текущего пользователя..."
 %regsvr32% /i "%SystemDrive%\Program Files\Windows Defender\shellext.dll" /s>nul 2>&1
 %schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /Enable>nul 2>&1
 %schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /Enable>nul 2>&1
@@ -979,19 +1015,19 @@ exit /b %errorlevel%
 %reg% delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /f>nul 2>&1
 %reg% delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments" /f>nul 2>&1
 %reg% delete "HKCU\Software\Policies\Microsoft\Edge" /f>nul 2>&1
+call :UnBlockUWP sechealth
+call :UnBlockUWP chxapp
 if exist "%save%MySecurityDefaults.reg" (
-	%msg% "Restore %save%MySecurityDefaults.reg" "Восстановление %save%MySecurityDefaults.reg"
 	%reg% import "%save%MySecurityDefaults.reg">nul 2>&1
 ) else (
 	if exist "%pth%MySecurityDefaults.reg" (
-	%msg% "Restore %pth%MySecurityDefaults.reg" "Восстановление %pth%MySecurityDefaults.reg"
 	%reg% import "%pth%MySecurityDefaults.reg">nul 2>&1
 	)
 )
 exit /b
 
 :Restore
-%msg% "Restore default setting..." "Восстановление настроек по умолчанию..."
+%msg% "Restore default setting for system..." "Восстановление настроек по умолчанию для всей системы..."
 set "HidePath=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
 for /f "usebackq tokens=2*" %%A in (`reg query "%HidePath%" /v "SettingsPageVisibility" 2^>nul`) do (
     set "SettingsPageVisibility=%%B"
@@ -1082,7 +1118,7 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t REG_DWORD /d "0" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\defenderbootstrapper.exe>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\defenderbootstrapper.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe" /f>nul 2>&1
@@ -1179,15 +1215,29 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %reg% query "HKLM\System\CurrentControlset\Services\WinDefend">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\WinDefend" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
 %reg% query "HKLM\System\CurrentControlset\Services\wscsvc">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\wscsvc" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
 %reg% query "HKLM\System\CurrentControlset\Services\wtd">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\wtd" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
+call :UnBlockUWP sechealth
+call :UnBlockUWP chxapp
 if exist "%save%MySecurityDefaults.reg" (
-	%msg% "Restore %save%MySecurityDefaults.reg" "Восстановление %save%MySecurityDefaults.reg"
 	%reg% import "%save%MySecurityDefaults.reg">nul 2>&1
 ) else (
 	if exist "%pth%MySecurityDefaults.reg" (
-	%msg% "Restore %pth%MySecurityDefaults.reg" "Восстановление %pth%MySecurityDefaults.reg"
 	%reg% import "%pth%MySecurityDefaults.reg">nul 2>&1
 	)
 )
+exit /b
+
+:UnBlockUWP
+set "UWP=%~1"
+set UwpName=
+set UwpPath=
+for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
+for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
+if not defined UwpName exit /b
+if not exist "%UwpPath%" exit /b
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
+%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
 exit /b
 
 :SafeBoot
@@ -1198,7 +1248,8 @@ for /f "tokens=3 delims= " %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows N
 (%reg% query "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend">nul 2>&1) %then% (set windefend=1)
 %bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" /t REG_SZ /d "%userinit%\"%pth%boot.cmd\"" /f>nul 2>&1
-echo bcdedit /deletevalue {default} safeboot>"%pth%boot.cmd"
+echo chcp 65001>"%pth%boot.cmd"
+echo bcdedit /deletevalue {default} safeboot>>"%pth%boot.cmd"
 echo reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" /t REG_SZ /d "%userinit%" /f>>"%pth%boot.cmd"
 echo reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "%usershell%" /f>>"%pth%boot.cmd"
 %ifdef% windefend (
