@@ -248,6 +248,12 @@ Blocking / unblocking process startup:
 
 `AchillesScript.cmd unblock process.exe`
 
+Blocking / unblocking preinstalled UWP apps by mask:
+
+`AchillesScript.cmd block calc`
+
+`AchillesScript.cmd unblock calc`
+
 Running with Trusted Installer privileges:
 
 `AchillesScript.cmd ti "path with space\process.exe"`
@@ -283,6 +289,12 @@ Enable Smart App Control:
 `AchillesScript.cmd block process.exe`
 
 `AchillesScript.cmd unblock process.exe`
+
+Блокировка / разблокировка предустановленных UWP приложений по маске:
+
+`AchillesScript.cmd block calc`
+
+`AchillesScript.cmd unblock calc`
 
 Запуск с привилегиями Trusted Installer:
 
