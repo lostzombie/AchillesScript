@@ -1246,8 +1246,9 @@ exit /b
 :SafeBoot
 del /f /q "%pth%boot.cmd">nul 2>&1
 set windefend=
-for /f "tokens=3 delims= " %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" 2^>^&1') do set "userinit=%%a"
-for /f "tokens=3 delims= " %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" 2^>^&1') do set "usershell=%%a"
+for /f "tokens=3 delims= " %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" 2^>^&1') do set "userinit=%%a"
+for /f "tokens=3 delims= " %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" 2^>^&1') do set "usershell=%%a"
+if "%userinit%"=="system"  set "usershell=%windir%\system32\userinit.exe,"
 (%reg% query "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend">nul 2>&1) %then% (set windefend=1)
 %bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" /t REG_SZ /d "%userinit%\"%pth%boot.cmd\"" /f>nul 2>&1
