@@ -117,6 +117,10 @@ if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
 set isValidItem=
 set Item=
 call :Screen
+echo.
+%msg% "ATTENTION On Win11 24h4, the reboot to safe mode is broken if the pin code or hello login is configured" "ВНИМАНИЕ На Win11 24h4 сломана перезагрузка в безопасный режим если настроен вход по пин-коду или hello"
+%msg% "Don't use the script in this case" "Не используй скрипт в данном случае"
+echo.
 %ifNdef% Lang (set /p Item="Enter menu item number using your keyboard [0-6]:") else (set /p Item="Введите номер пункта меню используя клавиатуру [0-6]:")
 for %%i in (1 2 3 4 5 6 0) do if [%Item%]==[%%i] set "isValidItem=%%i"
 %ifNdef% isValidItem goto :BEGIN
