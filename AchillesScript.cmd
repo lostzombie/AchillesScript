@@ -1,4 +1,4 @@
-::https://github.com/lostzombie/AchillesScript
+8::https://github.com/lostzombie/AchillesScript
 ::v1.3.0
 @echo off
 cls&chcp 65001>nul 2>&1&color 0F
@@ -352,8 +352,10 @@ echo.
 %msg% " [93m[6][0m Restore Defaults"                                                                 " [93m[6][0m Восстановить по умолчанию"
 %msg% " [93m[0][0m Exit"                                                                             " [93m[0][0m Выход"
 echo.
-%msg% "ATTENTION On Win11 24h4, the reboot to safe mode is broken if the pin code or hello login is configured" "ВНИМАНИЕ На Win11 24h4 сломана перезагрузка в безопасный режим если настроен вход по пин-коду или hello"
-%msg% "Don't use the script in this case" "Не используй скрипт в данном случае"
+%msg% "IMPORTANT. If you are using a Microsoft account, " "ВАЖНО. Если вы используете аккаунт Microsoft,"
+%msg% "you may have a broken login to your account in safe mode." "у вас может быть поломан вход в учётную запись в безопасном"
+%msg% "If you have not booted into safe mode and do not know" "режиме. Если вы не загружались в безопасный режим"
+%msg% "if this is possible, do not use this script." "и не знаете возможно ли это не используйте данный скрипт."
 echo.
 exit /b
 
