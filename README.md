@@ -12,9 +12,9 @@ cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 
 ![English](https://img.shields.io/badge/Language-En-blue)&emsp;&emsp;![Russian](https://img.shields.io/badge/Language-Ru-blue)
 
-ATTENTION! On Win11 24h4, the reboot to safe mode is broken if the pin code or hello login is configured. Don't use the script in this case.
+IMPORTANT. If you are using a Microsoft account, you may have a broken login to your account in safe mode. If you have not booted into safe mode and do not know if this is possible, do not use this script.
 
-ВНИМАНИЕ! На Win11 24h4 сломана перезагрузка в безопасный режим если настроен вход по пин-коду или hello. Не используй скрипт в данном случае.
+ВАЖНО. Если вы используете аккаунт Microsoft, у вас может быть поломан вход в учётную запись в безопасном режиме. Если вы не загружались в безопасный режим и не знаете возможно ли это не используйте данный скрипт.
 
 ## 💻Terminal User Interface
   
