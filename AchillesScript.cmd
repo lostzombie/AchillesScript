@@ -1,4 +1,4 @@
-8::https://github.com/lostzombie/AchillesScript
+::https://github.com/lostzombie/AchillesScript
 ::v1.3.0
 @echo off
 cls&chcp 65001>nul 2>&1&color 0F
@@ -342,7 +342,6 @@ echo.
                echo  [4;93m%WindowsVersion% build %WindowsBuild%[0m
 echo.
 %msg% "Disable defenses using:" "Отключить защиты используя:"
-echo.
 %msg% " [92m[1][0m Group Policies"                                                                   " [92m[1][0m Групповые политики"
 %msg% " [92m[2][0m Policies + Registry Settings"                                                     " [92m[2][0m Политики + Настройки реестра"
 %msg% " [92m[3][0m Policies + Settings + Disabling Services and drivers"                             " [92m[3][0m Политики + Настройки + Отключение служб и драйверов"
@@ -353,9 +352,9 @@ echo.
 %msg% " [93m[0][0m Exit"                                                                             " [93m[0][0m Выход"
 echo.
 %msg% "IMPORTANT. If you are using a Microsoft account, " "ВАЖНО. Если вы используете аккаунт Microsoft,"
-%msg% "you may have a broken login to your account in safe mode." "у вас может быть поломан вход в учётную запись в безопасном"
-%msg% "If you have not booted into safe mode and do not know" "режиме. Если вы не загружались в безопасный режим"
-%msg% "if this is possible, do not use this script." "и не знаете возможно ли это не используйте данный скрипт."
+%msg% "you may have a broken login to your account in safe mode." "у вас может быть поломан вход в учётную запись в безопасном режиме."
+%msg% "If you have not booted into safe mode and do not know if this is possible," "Если вы не загружались в безопасный режим и не знаете возможно ли это"
+%msg% "do not use this script." "не используйте данный скрипт."
 echo.
 exit /b
 
