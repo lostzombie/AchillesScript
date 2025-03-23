@@ -254,9 +254,9 @@ Blocking / unblocking process startup:
 
 Blocking / unblocking preinstalled UWP apps by mask:
 
-`AchillesScript.cmd block calc`
+`AchillesScript.cmd uwpoff calc`
 
-`AchillesScript.cmd unblock calc`
+`AchillesScript.cmd uwpon calc`
 
 Running with Trusted Installer privileges:
 
@@ -296,9 +296,9 @@ Enable Smart App Control:
 
 Блокировка / разблокировка предустановленных UWP приложений по маске:
 
-`AchillesScript.cmd block calc`
+`AchillesScript.cmd uwpoff calc`
 
-`AchillesScript.cmd unblock calc`
+`AchillesScript.cmd uwpon calc`
 
 Запуск с привилегиями Trusted Installer:
 
