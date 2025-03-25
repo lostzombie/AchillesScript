@@ -1,7 +1,7 @@
 ::https://github.com/lostzombie/AchillesScript
-::v1.3.0
 @echo off
 cls&chcp 65001>nul 2>&1&color 0F
+set "asv=ver 1.3.1"
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
 if "%sysdir%"=="X:\windows\system32" set "sysdir=C:\windows\system32"
 set "cmd=%sysdir%\cmd.exe"
@@ -334,7 +334,7 @@ cls
                echo [96m Неразрушающее отключение защит Windows[0m
 )
 			   echo [36m┌────────────────────────────┬─────────────┐[0m
-               echo [36m│[0m [92mMade with love of Windows*[0m [36m│   [0m[93mver 1.3[0m   [36m│[0m
+               echo [36m│[0m [92mMade with love of Windows*[0m [36m│  [0m[93m%asv%[0m  [36m│[0m
 			   echo [36m└────────────────────────────┴─────────────┘[0m		
                echo [90m *pure unprotected love[0m
 		   
@@ -646,14 +646,20 @@ exit /b
 set "UWP=%~1"
 set UwpName=
 set UwpPath=
-for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
-for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
-if not defined UwpName exit /b
+for /f "delims=" %%a in ('%powershell% -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
+for /f "delims=" %%a in ('%powershell% -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
+%ifdef% UwpName goto :SkipFindUwpL
+for /d %%f in ("%windir%\SystemApps\*%UWP%*") do (
+	set "UwpName=%%~nxf"
+	set "UwpPath=%%f"
+)
+:SkipFindUwpL
+%ifNdef% UwpName exit /b
 if not exist "%UwpPath%" exit /b
 echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%>>"%pth%hkcu.list"
 echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%>>"%pth%hkcu.list"
-for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
-for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
+for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
+for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
 exit /b
 
 :UserSettingDone
@@ -771,7 +777,7 @@ exit /b
 %reg% add "HKLM\SOFTWARE\Policies\Microsoft\MRT" /v DontReportInfectionInformation /t REG_DWORD /d 1 /f>nul 2>&1
 ::
 set "HidePath=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-for /f "usebackq tokens=2*" %%A in (`reg query "%HidePath%" /v "SettingsPageVisibility" 2^>nul`) do (
+for /f "usebackq tokens=2*" %%A in ('%reg% query "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do (
     set "SettingsPageVisibility=%%B"
 )
 %ifNdef% SettingsPageVisibility %reg% add "%HidePath%" /v "SettingsPageVisibility" /t REG_SZ /d "hide:windowsdefender" /f>nul 2>&1
@@ -928,14 +934,14 @@ exit /b
 set "UWP=%~1"
 set UwpName=
 set UwpPath=
-for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
-for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
+for /f "delims=" %%a in ('%powershell% -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
+for /f "delims=" %%a in ('%powershell% -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
 if not defined UwpName exit /b
 if not exist "%UwpPath%" exit /b
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
 %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
-for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
-for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1)
+for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1)
 exit /b
 
 :Services
@@ -1033,7 +1039,7 @@ exit /b
 :Restore
 %msg% "Restore default setting for system..." "Восстановление настроек по умолчанию для всей системы..."
 set "HidePath=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-for /f "usebackq tokens=2*" %%A in (`reg query "%HidePath%" /v "SettingsPageVisibility" 2^>nul`) do (
+for /f "usebackq tokens=2*" %%A in ('%reg% query "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do (
     set "SettingsPageVisibility=%%B"
 )
 %ifNdef% SettingsPageVisibility goto :SkipRestoreVisibility
@@ -1234,14 +1240,22 @@ exit /b
 set "UWP=%~1"
 set UwpName=
 set UwpPath=
-for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
-for /f "delims=" %%a in ('powershell -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
-if not defined UwpName exit /b
+for /f "delims=" %%a in ('%powershell% -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).PackageFullName"') do set "UwpName=%%a"
+for /f "delims=" %%a in ('%powershell% -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
+%ifdef% UwpName goto :SkipFindUwp
+for /d %%f in ("%windir%\SystemApps\*%UWP%*") do (
+	set "UwpName=%%~nxf"
+	set "UwpPath=%%f"
+)
+:SkipFindUwp
+%ifNdef% UwpName exit /b
 if not exist "%UwpPath%" exit /b
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
 %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
-for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
-for /f "tokens=*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
+%powershell% -ExecutionPolicy Bypass -Command "Reset-AppxPackage -Package %UwpName%">nul 2>&1
+%powershell% -ExecutionPolicy Bypass -Command "Add-AppxPackage -DisableDevelopmentMode -Register %UwpPath%\AppXManifest.xml">nul 2>&1
 exit /b
 
 :SafeBoot
