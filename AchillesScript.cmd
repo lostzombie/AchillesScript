@@ -1,11 +1,16 @@
 ::https://github.com/lostzombie/AchillesScript
 @echo off
 cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.3.1"
+set "asv=ver 1.4.0"
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
 if "%sysdir%"=="X:\windows\system32" set "sysdir=C:\windows\system32"
 set "cmd=%sysdir%\cmd.exe"
 set "reg=%sysdir%\reg.exe"
+set "ra=%reg% add"
+set "rq=%reg% query"
+set "rd=%reg% delete"
+set "dw=REG_DWORD"
+set "sz=REG_SZ"
 set "bcdedit=%sysdir%\bcdedit.exe"
 set "sc=%sysdir%\sc.exe"
 set "powershell=%sysdir%\WindowsPowerShell\v1.0\powershell.exe"
@@ -19,7 +24,7 @@ set "Script=%~dpnx0"
 set ScriptPS=\"%~dpnx0\"
 set "pth=%~dp0"
 set "save=%pth%"
-if "%pth%"=="%tmp%" for /f "usebackq tokens=1,2,*" %%B in (`%reg% query "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v Desktop`) do set save=%%D\
+if "%pth%"=="%tmp%" for /f "usebackq tokens=1,2,*" %%B in (`%rq% "HKEY_CURRENT_USER%smw%\%cv%\Explorer\User Shell Folders" /v Desktop`) do set save=%%D\
 set "arg1=%~1"
 set "arg2=%~2"
 shift
@@ -37,7 +42,22 @@ set L=ru
 set isTrustedInstaller=
 set UserSettingDone=
 ::#############################################################################
-(%reg% query "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%reg% query "HKLM\SYSTEM\CurrentControlSet\Control\Nls\Language" /v Default|find "0x409">nul 2>&1) %then% (set Lang=%L%))
+set "dl=disable"
+set "df=defend"
+set "wd=Windows %df%er"
+set "ss=SmartScreen"
+set "cv=CurrentVersion"
+set "scc=\SYSTEM\CurrentControlSet\Control"
+set "smw=\Software\Microsoft\Windows"
+set "spm=\SOFTWARE\Policies\Microsoft"
+set "smwd=%smw% %df%er"
+set "smwci=%smw% NT\%cv%\Image File Execution Options"
+set "spmwd=%spm%\%wd%"
+set "sccd=%scc%\DeviceGuard"
+set "scs=\SYSTEM\CurrentControlSet\Services"
+set "scl=\SOFTWARE\Classes"
+::
+(%rq% "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%rq% "HKLM%scc%\Nls\Language" /v Default|find "0x409">nul 2>&1) %then% (set Lang=%L%))
 %ifNdef% Lang (title Achilles' Script) else (title Ахилесов Скрипт)
 ::
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
@@ -50,7 +70,7 @@ echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write err
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"&exit /b 1
 	set  isValidArg=
 )
-(%reg% query "HKLM\Software\AchillesScript">nul 2>&1) %then% (%reg% query "HKLM\Software\AchillesScript" /v "UserSettingDone"|find "1">nul 2>&1) %then% (set UserSettingDone=1)>nul 2>&1
+(%rq% "HKLM\Software\AchillesScript">nul 2>&1) %then% (%rq% "HKLM\Software\AchillesScript" /v "UserSettingDone"|find "1">nul 2>&1) %then% (set UserSettingDone=1)>nul 2>&1
 %ifNdef% arg1 (
 	if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
 	%ifNdef% SAFEBOOT_OPTION call :UserSettingDone
@@ -110,7 +130,7 @@ for /f "tokens=1 delims=." %%v in ('echo  %win%') do set /a "win=%%v"
 for /f "tokens=4" %%a in ('ver') do set "WindowsBuild=%%a"
 set "WindowsBuild=%WindowsBuild:~5,-1%"
 if [%win%] lss [10] %ifdef% Lang (echo Этот скрипт разработан для Windows 10 и новее)&echo.&pause&exit else (echo This Script is designed for Windows 10 and newer)&echo.&pause&exit
-for /f "tokens=3,*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName') do set "WindowsVersion=%%a %%b"
+for /f "tokens=3,*" %%a in ('%rq% "HKLM%smw% NT\%cv%" /v ProductName') do set "WindowsVersion=%%a %%b"
 if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
 ::#############################################################################
 :BEGIN
@@ -154,11 +174,13 @@ exit
 %ifNdef% UserSettingDone (
 	%ifNdef% arg1 call :Warning
 	%ifNdef% SAFEBOOT_OPTION call :CheckTrusted||call :Backup
+	"%ProgramFiles%\%wd%\MpCmdRun.exe" -RemoveDefinitions -All>nul 2>&1
 	%ifdef% Policies call :CheckTrusted||call :PoliciesHKCU
 	%ifdef% Registry call :CheckTrusted||call :RegistryHKCU
 	%ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 )
 %ifdef% Item set "args=apply %Item%"
+cls
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
 cls
 call :Backup
@@ -190,37 +212,75 @@ if exist "%save%MySecurityDefaults.reg" (
 echo.
 )
 %ifdef% Policies (
-%msg% "Group policies will be applied to disable " "Будут применены групповые политики для отключения "
-%msg% "Windows Defender, SmartScreen, Kernel Isolation, SmartAppControl etc." "Защитника Windows, SmartScreen, Изоляции ядра, Интелектуального управления приложениями"
-if exist "%sysdir%\MRT.exe" %msg% "Disable updating and reporting for Malicious Software Removal Tool." "Отключено обновление и отчеты средства удаления вредоносных программ."
+%msg% "Group policies will be applied to %dl% " "Будут применены групповые политики для отключения "
+%msg% "%wd%, %ss%, Kernel Isolation, SmartAppControl etc." "Защитника Windows, %ss%, Изоляции ядра, Интелектуального управления приложениями"
+if exist "%sysdir%\MRT.exe" %msg% "%dl% updating and reporting for Malicious Software Removal Tool." "Отключено обновление и отчеты средства удаления вредоносных программ."
 echo.
 )
 %ifdef% Registry (
-%msg% "Registry settings will be applied to disable" "Будут применены настройки реестра для отключения"
+%msg% "Registry settings will be applied to %dl%" "Будут применены настройки реестра для отключения"
 %msg% "tasks in the scheduler, warnings for downloaded files, file explorer extensions" "задач в планировщике, предупреждения для скачанных файлов, расширения проводника"
 echo.
 )
-%ifdef% Services %msg% "The launch of Defender services and drivers will be disabled." "Будет отключен запуск служб и драйверов защитника."&echo.
-%ifdef%    Block %msg% "The launch of defender executable files will be blocked." "Будет заблокирован запуск исполняемых файлов защитника."&echo.
+%ifdef% Services %msg% "The launch of %df%er services and drivers will be %dl%d." "Будет отключен запуск служб и драйверов защитника."&echo.
+%ifdef%    Block %msg% "The launch of %df%er executable files will be blocked." "Будет заблокирован запуск исполняемых файлов защитника."&echo.
 %ifNdef% SAFEBOOT_OPTION %msg% "The computer will be restarted twice, to safe mode and back." "Компьютер будет перезагружен дважды, в безопасный режим и обратно."
 %ifdef% SAFEBOOT_OPTION %msg% "The computer will be restarted." "Компьютер будет перезагружен."
 echo.
-%ifNdef% Lang (choice /m "You really want to disable Windows defences" /c "yn") else (choice /m "Вы действительно хотите отключить защиты Windows?" /c "дн")
+%ifNdef% Lang (choice /m "You really want to %dl% Windows defences" /c "yn") else (choice /m "Вы действительно хотите отключить защиты Windows?" /c "дн")
 if [%errorlevel%]==[2] goto :BEGIN
 cls
 exit /b
 
 :Reboot2Safe
-%reg% copy "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend_off" /s /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" /f>nul 2>&1
+%reg% copy "HKLM%scc%\SafeBoot\Minimal\Win%df%" "HKLM%scc%\SafeBoot\Minimal\Win%df%_off" /s /f>nul 2>&1
+%rd% "HKLM%scc%\SafeBoot\Minimal\Win%df%" /f>nul 2>&1
 call :SafeBoot
 set "BootArgs=%args%"
 %ifdef% Item set "BootArgs=apply %Item%"
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "cmd.exe /c start \"\" /max /realtime \"%Script%\" %BootArgs%" /f>nul 2>&1&&((%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell"|find "%Script%">nul 2>&1)||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit))||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit)
+set "boot=cmd.exe /c start \"\" /max /realtime \"%Script%\" %BootArgs%"
+%ra% "HKLM%smw% NT\%cv%\Winlogon" /v "Shell" /t %sz% /d "cmd.exe /k title WAIT...&echo WAIT...&start \"\" cmd.exe /c start \"\" /max /realtime \"%Script%\" %BootArgs%" /f>nul 2>&1&&((%rq% "HKLM%smw% NT\%cv%\Winlogon" /v "Shell"|find "%Script%">nul 2>&1)||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit))||(%err% "Error changing Winlogon/Shell Registry parameter" "Ошибка изменения параметра реестра Winlogon/Shell"&pause&exit)
 %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
 %shutdown% -r -f -t 5
 %timeout% 4
 exit
+
+:SafeBoot
+del /f /q "%pth%boot.cmd">nul 2>&1
+set win%df%=
+for /f "tokens=3 delims= " %%a in ('%rq% "HKLM%smw% NT\%cv%\Winlogon" /v "Userinit" 2^>^&1') do set "userinit=%%a"
+for /f "tokens=3 delims= " %%a in ('%rq% "HKLM%smw% NT\%cv%\Winlogon" /v "Shell" 2^>^&1') do set "usershell=%%a"
+if "%userinit%"=="system"  set "usershell=%windir%\system32\userinit.exe,"
+(%rq% "HKLM%scc%\SafeBoot\Minimal\Win%df%">nul 2>&1) %then% (set win%df%=1)
+set timeout=30
+set displaybootmenu=
+for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "timeout"') do set "timeout=%%t"
+for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "displaybootmenu"') do set "displaybootmenu=%%t"
+for /f "tokens=2" %%t in ('%bcdedit% /v ^| find "default"') do set "default=%%t"
+for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {current} /d "AchillesBoot" ^| find "{"') do set guid=%%a
+%bcdedit% /timeout 3
+%bcdedit% /set {bootmgr} displaybootmenu Yes>nul 2>&1
+%bcdedit% /set {%guid%} safeboot minimal>nul 2>&1
+%bcdedit% /set {%guid%} bootmenupolicy Legacy>nul 2>&1
+%bcdedit% /set {%guid%} hypervisorlaunchtype off>nul 2>&1
+%bcdedit% /default {%guid%}
+%ra% "HKLM%smw% NT\%cv%\Winlogon" /v "Userinit" /t %sz% /d "%userinit%,\"%pth%boot.cmd\"" /f>nul 2>&1
+echo chcp 65001>"%pth%boot.cmd"
+echo bcdedit /timeout %timeout%>>"%pth%boot.cmd"
+%ifdef% displaybootmenu echo bcdedit /set {bootmgr} displaybootmenu %displaybootmenu%>>"%pth%boot.cmd"
+%ifNdef% displaybootmenu echo bcdedit /deletevalue {bootmgr} displaybootmenu>>"%pth%boot.cmd"
+%ifdef% default echo /default %default%>>"%pth%boot.cmd"
+echo bcdedit /delete {%guid%}>>"%pth%boot.cmd"
+echo reg add "HKLM%smw% NT\%cv%\Winlogon" /v "Userinit" /t %sz% /d "%userinit%" /f>>"%pth%boot.cmd"
+echo reg add "HKLM%smw% NT\%cv%\Winlogon" /v "Shell" /t %sz% /d "%usershell%" /f>>"%pth%boot.cmd"
+%ifdef% win%df% (
+	%reg% copy "HKLM%scc%\SafeBoot\Minimal\Win%df%" "HKLM%scc%\SafeBoot\Minimal\Win%df%_off" /s /f>nul 2>&1
+	%rd% "HKLM%scc%\SafeBoot\Minimal\Win%df%" /f>nul 2>&1
+	echo reg copy "HKLM%scc%\SafeBoot\Minimal\Win%df%_off" "HKLM%scc%\SafeBoot\Minimal\Win%df%" /s /f>>"%pth%boot.cmd"
+	echo reg delete "HKLM%scc%\SafeBoot\Minimal\Win%df%_off" /f>>"%pth%boot.cmd"
+)
+echo del /f /q "%pth%boot.cmd">>"%pth%boot.cmd"
+exit /b
 
 :Reboot2Normal
 %msg% "The computer will now reboot into default mode." "Компьютер сейчас перезагрузиться в обычный режим."
@@ -236,7 +296,7 @@ del /f /q "%pth%ti.ps1">nul 2>&1
 set "RunAsTrustedInstaller=%~1"
 echo $AppFullPath=[System.Environment]::GetEnvironmentVariable('RunAsTrustedInstaller')>>"%pth%ti.ps1"
 echo [string]$GetTokenAPI=@'>>"%pth%ti.ps1"
-echo using System;using System.ServiceProcess;using System.Diagnostics;using System.Runtime.InteropServices;using System.Security.Principal;namespace WinAPI{internal static class WinBase{[StructLayout(LayoutKind.Sequential)]internal struct SECURITY_ATTRIBUTES{public int nLength;public IntPtr lpSecurityDeScriptor;public bool bInheritHandle;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct STARTUPINFO{public Int32 cb;public string lpReserved;public string lpDesktop;public string lpTitle;public uint dwX;public uint dwY;public uint dwXSize;public uint dwYSize;public uint dwXCountChars;public uint dwYCountChars;public uint dwFillAttribute;public uint dwFlags;public Int16 wShowWindow;public Int16 cbReserved2;public IntPtr lpReserved2;public IntPtr hStdInput;public IntPtr hStdOutput;public IntPtr hStdError;}[StructLayout(LayoutKind.Sequential)]internal struct PROCESS_INFORMATION{public IntPtr hProcess;public IntPtr hThread;public uint dwProcessId;public uint dwThreadId;}}internal static class WinNT{public enum TOKEN_TYPE{TokenPrimary=1,TokenImpersonation}public enum SECURITY_IMPERSONATION_LEVEL{SecurityAnonymous,SecurityIdentification,SecurityImpersonation,SecurityDelegation}[StructLayout(LayoutKind.Sequential,Pack=1)]internal struct TokPriv1Luid{public uint PrivilegeCount;public long Luid;public UInt32 Attributes;}}internal static class Advapi32{public const int SE_PRIVILEGE_ENABLED=0x00000002;public const uint CREATE_NO_WINDOW=0x08000000;public const uint CREATE_NEW_CONSOLE=0x00000010;public const uint CREATE_UNICODE_ENVIRONMENT=0x00000400;public const UInt32 STANDARD_RIGHTS_REQUIRED=0x000F0000;public const UInt32 STANDARD_RIGHTS_READ=0x00020000;public const UInt32 TOKEN_ASSIGN_PRIMARY=0x0001;public const UInt32 TOKEN_DUPLICATE=0x0002;public const UInt32 TOKEN_IMPERSONATE=0x0004;public const UInt32 TOKEN_QUERY=0x0008;public const UInt32 TOKEN_QUERY_SOURCE=0x0010;public const UInt32 TOKEN_ADJUST_PRIVILEGES=0x0020;public const UInt32 TOKEN_ADJUST_GROUPS=0x0040;public const UInt32 TOKEN_ADJUST_DEFAULT=0x0080;public const UInt32 TOKEN_ADJUST_SESSIONID=0x0100;public const UInt32 TOKEN_READ=(STANDARD_RIGHTS_READ^|TOKEN_QUERY);public const UInt32 TOKEN_ALL_ACCESS=(STANDARD_RIGHTS_REQUIRED^|TOKEN_ASSIGN_PRIMARY^|TOKEN_DUPLICATE^|TOKEN_IMPERSONATE^|TOKEN_QUERY^|TOKEN_QUERY_SOURCE^|TOKEN_ADJUST_PRIVILEGES^|TOKEN_ADJUST_GROUPS^|TOKEN_ADJUST_DEFAULT^|TOKEN_ADJUST_SESSIONID);[DllImport("advapi32.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]public static extern bool OpenProcessToken(IntPtr ProcessHandle,UInt32 DesiredAccess,out IntPtr TokenHandle);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public extern static bool DuplicateTokenEx(IntPtr hExistingToken,uint dwDesiredAccess,IntPtr lpTokenAttributes,WinNT.SECURITY_IMPERSONATION_LEVEL ImpersonationLevel,WinNT.TOKEN_TYPE TokenType,out IntPtr phNewToken);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]internal static extern bool LookupPrivilegeValue(string lpSystemName,string lpName,ref long lpLuid);[DllImport("advapi32.dll",SetLastError=true)]internal static extern bool AdjustTokenPrivileges(IntPtr TokenHandle,bool DisableAllPrivileges,ref WinNT.TokPriv1Luid NewState,UInt32 Zero,IntPtr Null1,IntPtr Null2);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessAsUserW(IntPtr hToken,string lpApplicationName,string lpCommandLine,IntPtr lpProcessAttributes,IntPtr lpThreadAttributes,bool bInheritHandles,uint dwCreationFlags,IntPtr lpEnvironment,string lpCurrentDirectory,ref WinBase.STARTUPINFO lpStartupInfo,out WinBase.PROCESS_INFORMATION lpProcessInformation);[DllImport("advapi32.dll",SetLastError=true)]public static extern bool SetTokenInformation(IntPtr TokenHandle,uint TokenInformationClass,ref IntPtr TokenInformation,int TokenInformationLength);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public static extern bool RevertToSelf();}internal static class Kernel32{[Flags]public enum ProcessAccessFlags:uint{All=0x001F0FFF}[DllImport("kernel32.dll",SetLastError=true)]>>"%pth%ti.ps1"
+echo using System;using System.ServiceProcess;using System.Diagnostics;using System.Runtime.InteropServices;using System.Security.Principal;namespace WinAPI{internal static class WinBase{[StructLayout(LayoutKind.Sequential)]internal struct SECURITY_ATTRIBUTES{public int nLength;public IntPtr lpSecurityDeScriptor;public bool bInheritHandle;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct STARTUPINFO{public Int32 cb;public string lpReserved;public string lpDesktop;public string lpTitle;public uint dwX;public uint dwY;public uint dwXSize;public uint dwYSize;public uint dwXCountChars;public uint dwYCountChars;public uint dwFillAttribute;public uint dwFlags;public Int16 wShowWindow;public Int16 cbReserved2;public IntPtr lpReserved2;public IntPtr hStdInput;public IntPtr hStdOutput;public IntPtr hStdError;}[StructLayout(LayoutKind.Sequential)]internal struct PROCESS_INFORMATION{public IntPtr hProcess;public IntPtr hThread;public uint dwProcessId;public uint dwThreadId;}}internal static class WinNT{public enum TOKEN_TYPE{TokenPrimary=1,TokenImpersonation}public enum SECURITY_IMPERSONATION_LEVEL{SecurityAnonymous,SecurityIdentification,SecurityImpersonation,SecurityDelegation}[StructLayout(LayoutKind.Sequential,Pack=1)]internal struct TokPriv1Luid{public uint PrivilegeCount;public long Luid;public UInt32 Attributes;}}internal static class Advapi32{public const int SE_PRIVILEGE_ENABLED=0x00000002;public const uint CREATE_NO_WINDOW=0x08000000;public const uint CREATE_NEW_CONSOLE=0x00000010;public const uint CREATE_UNICODE_ENVIRONMENT=0x00000400;public const UInt32 STANDARD_RIGHTS_REQUIRED=0x000F0000;public const UInt32 STANDARD_RIGHTS_READ=0x00020000;public const UInt32 TOKEN_ASSIGN_PRIMARY=0x0001;public const UInt32 TOKEN_DUPLICATE=0x0002;public const UInt32 TOKEN_IMPERSONATE=0x0004;public const UInt32 TOKEN_QUERY=0x0008;public const UInt32 TOKEN_QUERY_SOURCE=0x0010;public const UInt32 TOKEN_ADJUST_PRIVILEGES=0x0020;public const UInt32 TOKEN_ADJUST_GROUPS=0x0040;public const UInt32 TOKEN_ADJUST_DEFAULT=0x0080;public const UInt32 TOKEN_ADJUST_SESSIONID=0x0100;public const UInt32 TOKEN_READ=(STANDARD_RIGHTS_READ^|TOKEN_QUERY);public const UInt32 TOKEN_ALL_ACCESS=(STANDARD_RIGHTS_REQUIRED^|TOKEN_ASSIGN_PRIMARY^|TOKEN_DUPLICATE^|TOKEN_IMPERSONATE^|TOKEN_QUERY^|TOKEN_QUERY_SOURCE^|TOKEN_ADJUST_PRIVILEGES^|TOKEN_ADJUST_GROUPS^|TOKEN_ADJUST_DEFAULT^|TOKEN_ADJUST_SESSIONID);[DllImport("advapi32.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]public static extern bool OpenProcessToken(IntPtr ProcessHandle,UInt32 DesiredAccess,out IntPtr TokenHandle);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public extern static bool DuplicateTokenEx(IntPtr hExistingToken,uint dwDesiredAccess,IntPtr lpTokenAttributes,WinNT.SECURITY_IMPERSONATION_LEVEL ImpersonationLevel,WinNT.TOKEN_TYPE TokenType,out IntPtr phNewToken);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]internal static extern bool LookupPrivilegeValue(string lpSystemName,string lpName,ref long lpLuid);[DllImport("advapi32.dll",SetLastError=true)]internal static extern bool AdjustTokenPrivileges(IntPtr TokenHandle,bool %dl%AllPrivileges,ref WinNT.TokPriv1Luid NewState,UInt32 Zero,IntPtr Null1,IntPtr Null2);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessAsUserW(IntPtr hToken,string lpApplicationName,string lpCommandLine,IntPtr lpProcessAttributes,IntPtr lpThreadAttributes,bool bInheritHandles,uint dwCreationFlags,IntPtr lpEnvironment,string lpCurrentDirectory,ref WinBase.STARTUPINFO lpStartupInfo,out WinBase.PROCESS_INFORMATION lpProcessInformation);[DllImport("advapi32.dll",SetLastError=true)]public static extern bool SetTokenInformation(IntPtr TokenHandle,uint TokenInformationClass,ref IntPtr TokenInformation,int TokenInformationLength);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public static extern bool RevertToSelf();}internal static class Kernel32{[Flags]public enum ProcessAccessFlags:uint{All=0x001F0FFF}[DllImport("kernel32.dll",SetLastError=true)]>>"%pth%ti.ps1"
 echo public static extern IntPtr OpenProcess(ProcessAccessFlags processAccess,bool bInheritHandle,int processId);[DllImport("kernel32.dll",SetLastError=true)]public static extern bool CloseHandle(IntPtr hObject);}internal static class Userenv{[DllImport("userenv.dll",SetLastError=true)]public static extern bool CreateEnvironmentBlock(ref IntPtr lpEnvironment,IntPtr hToken,bool bInherit);}public static class ProcessConfig{public static IntPtr DuplicateTokenSYS(IntPtr hTokenSys){IntPtr hProcess=IntPtr.Zero,hToken=IntPtr.Zero,hTokenDup=IntPtr.Zero;int pid=0;string name;bool bSuccess,impersonate=false;try{if(hTokenSys==IntPtr.Zero){bSuccess=RevertToRealSelf();name=System.Text.Encoding.UTF8.GetString(new byte[]{87,73,78,76,79,71,79,78});}else{name=System.Text.Encoding.UTF8.GetString(new byte[]{84,82,85,83,84,69,68,73,78,83,84,65,76,76,69,82});ServiceController controlTI=new ServiceController(name);if(controlTI.Status==ServiceControllerStatus.Stopped){controlTI.Start();System.Threading.Thread.Sleep(5);controlTI.Close();}impersonate=ImpersonateWithToken(hTokenSys);if(!impersonate){return IntPtr.Zero;}}IntPtr curSessionId=new IntPtr(Process.GetCurrentProcess().SessionId);Process process=Array.Find(Process.GetProcessesByName(name),p=^>p.Id^>0);if(process!=null){pid=process.Id;}else{return IntPtr.Zero;}hProcess=Kernel32.OpenProcess(Kernel32.ProcessAccessFlags.All,true,pid);uint DesiredAccess=Advapi32.TOKEN_QUERY^|Advapi32.TOKEN_DUPLICATE^|Advapi32.TOKEN_ASSIGN_PRIMARY;bSuccess=Advapi32.OpenProcessToken(hProcess,DesiredAccess,out hToken);if(!bSuccess){return IntPtr.Zero;}DesiredAccess=Advapi32.TOKEN_ALL_ACCESS;bSuccess=Advapi32.DuplicateTokenEx(hToken,DesiredAccess,IntPtr.Zero,WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityDelegation,WinNT.TOKEN_TYPE.TokenPrimary,out hTokenDup);if(!bSuccess){bSuccess=Advapi32.DuplicateTokenEx(hToken,DesiredAccess,IntPtr.Zero,WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,WinNT.TOKEN_TYPE.TokenPrimary,out hTokenDup);}if(bSuccess){bSuccess=EnableAllPrivilages(hTokenDup);}if(!impersonate){hTokenSys=hTokenDup;impersonate=ImpersonateWithToken(hTokenSys);}if(impersonate){bSuccess=Advapi32.SetTokenInformation(hTokenDup,12,ref curSessionId,4);}}catch(Exception){}finally{if(hProcess!=IntPtr.Zero){Kernel32.CloseHandle(hProcess);}if(hToken!=IntPtr.Zero){Kernel32.CloseHandle(hToken);}bSuccess=RevertToRealSelf();}if(hTokenDup!=IntPtr.Zero){return hTokenDup;}else{return IntPtr.Zero;}}public static bool RevertToRealSelf(){try{Advapi32.RevertToSelf();WindowsImpersonationContext currentImpersonate=WindowsIdentity.GetCurrent().Impersonate();currentImpersonate.Undo();currentImpersonate.Dispose();}catch(Exception){return false;}return true;}public static bool ImpersonateWithToken(IntPtr hTokenSys){try{WindowsImpersonationContext ImpersonateSys=new WindowsIdentity(hTokenSys).Impersonate();}catch(Exception){return false;}return true;}private enum PrivilegeNames{SeAssignPrimaryTokenPrivilege,SeBackupPrivilege,SeIncreaseQuotaPrivilege,SeLoadDriverPrivilege,SeManageVolumePrivilege,SeRestorePrivilege,SeSecurityPrivilege,SeShutdownPrivilege,SeSystemEnvironmentPrivilege,SeSystemTimePrivilege,SeTakeOwnershipPrivilege,SeTrustedCredmanAccessPrivilege,SeUndockPrivilege};private static bool EnableAllPrivilages(IntPtr hTokenSys){WinNT.TokPriv1Luid tp;tp.PrivilegeCount=1;tp.Luid=0;tp.Attributes=Advapi32.SE_PRIVILEGE_ENABLED;bool bSuccess=false;try{foreach(string privilege in Enum.GetNames(typeof(PrivilegeNames))){bSuccess=Advapi32.LookupPrivilegeValue(null,privilege,ref tp.Luid);bSuccess=Advapi32.AdjustTokenPrivileges(hTokenSys,false,ref tp,0,IntPtr.Zero,IntPtr.Zero);}}catch(Exception){return false;}return bSuccess;}public static StructOut CreateProcessWithTokenSys(IntPtr hTokenSys,string AppPath){uint exitCode=0;bool bSuccess;bool bInherit=false;string stdOutString="";IntPtr hReadOut=IntPtr.Zero,hWriteOut=IntPtr.Zero;const uint HANDLE_FLAG_INHERIT=0x00000001;const uint STARTF_USESTDHANDLES=0x00000100;const UInt32 INFINITE=0xFFFFFFFF;IntPtr NewEnvironment=IntPtr.Zero;bSuccess=Userenv.CreateEnvironmentBlock(ref NewEnvironment,hTokenSys,true);uint CreationFlags=Advapi32.CREATE_UNICODE_ENVIRONMENT^|Advapi32.CREATE_NEW_CONSOLE;WinBase.PROCESS_INFORMATION pi=new WinBase.PROCESS_INFORMATION();WinBase.STARTUPINFO si=new WinBase.STARTUPINFO();si.cb=Marshal.SizeOf(si);si.lpDesktop="winsta0\\default";try{bSuccess=ImpersonateWithToken(hTokenSys);bSuccess=Advapi32.CreateProcessAsUserW(hTokenSys,null,AppPath,IntPtr.Zero,IntPtr.Zero,bInherit,(uint)CreationFlags,NewEnvironment,null,ref si,out pi);if(!bSuccess){exitCode=1;}}catch(Exception){}finally{if(pi.hProcess!=IntPtr.Zero){Kernel32.CloseHandle(pi.hProcess);}if(pi.hThread!=IntPtr.Zero){Kernel32.CloseHandle(pi.hThread);}bSuccess=RevertToRealSelf();}StructOut so=new StructOut();so.ProcessId=pi.dwProcessId;so.ExitCode=exitCode;so.StdOut=stdOutString;return so;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]public struct StructOut{public uint ProcessId;public uint ExitCode;public string StdOut;}}}>>"%pth%ti.ps1"
 echo '@>>"%pth%ti.ps1"
 echo if (-not ('WinAPI.ProcessConfig' -as [type] )){$cp=[System.CodeDom.Compiler.CompilerParameters]::new(@('System.dll','System.ServiceProcess.dll'))>>"%pth%ti.ps1"
@@ -263,7 +323,7 @@ call :CheckTrusted&&goto :TrustedBackup
 %msg% "Enabling the RegIdleBackup task in the scheduler..." "Включение задания RegIdleBackup в планировщике..."
 %schtasks% /Change /TN "Microsoft\Windows\Registry\RegIdleBackup" /Enable>nul 2>&1&&(echo OK&%msg% "Running RegIdleBackup task from the scheduler..." "Запуск задания RegIdleBackup из планировщика..."&%schtasks% /Run /I /TN "Microsoft\Windows\Registry\RegIdleBackup">nul 2>&1&&echo OK||%msg% "Skip" "Пропуск")||%msg% "Skip" "Пропуск"
 %msg% "Creating a recovery point if recovery is enabled..." "Создание точки восстановления, если восстановление включено..."
-%powershell% -ExecutionPolicy Bypass-Command "Checkpoint-Computer -DeScription 'Achilles Script' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
+%powershell% -ExecutionPolicy Bypass -Command "Checkpoint-Computer -DeScription 'Achilles Script' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
 %msg% "Backup settings from the HKCU registry key..." "Бэкап настроек из раздела реестра HKCU..."
 call :HKCU_List
 call :BackupReg "hkcu.list" "hkcu.txt"
@@ -341,7 +401,7 @@ cls
 echo.
                echo  [4;93m%WindowsVersion% build %WindowsBuild%[0m
 echo.
-%msg% "Disable defenses using:" "Отключить защиты используя:"
+%msg% "%dl% defenses using:" "Отключить защиты используя:"
 %msg% " [92m[1][0m Group Policies"                                                                   " [92m[1][0m Групповые политики"
 %msg% " [92m[2][0m Policies + Registry Settings"                                                     " [92m[2][0m Политики + Настройки реестра"
 %msg% " [92m[3][0m Policies + Settings + Disabling Services and drivers"                             " [92m[3][0m Политики + Настройки + Отключение служб и драйверов"
@@ -360,286 +420,286 @@ exit /b
 
 :HKCU_List
 del /f/q "%pth%hkcu.list">nul 2>&1
-echo HKCU:\Software\Microsoft\Windows Security Health\State,AppAndBrowser_EdgeSmartScreenOff>"%pth%hkcu.list"
-echo HKCU:\Software\Microsoft\Windows Security Health\State,AppAndBrowser_PuaSmartScreenOff>>"%pth%hkcu.list"
-echo HKCU:\Software\Microsoft\Windows Security Health\State,AppAndBrowser_StoreAppsSmartScreenOff>>"%pth%hkcu.list"
-echo HKCU:\Software\Microsoft\Windows\CurrentVersion\AppHost,EnableWebContentEvaluation>>"%pth%hkcu.list"
-echo HKCU:\Software\Microsoft\Windows\CurrentVersion\AppHost,PreventOverride>>"%pth%hkcu.list"
-echo HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance,Enabled>>"%pth%hkcu.list"
-echo HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments,SaveZoneInformation>>"%pth%hkcu.list"
-echo HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments,ScanWithAntiVirus>>"%pth%hkcu.list"
-echo HKCU:\Software\Policies\Microsoft\Edge,SmartScreenEnabled>>"%pth%hkcu.list"
-echo HKCU:\Software\Policies\Microsoft\Edge,SmartScreenPuaEnabled>>"%pth%hkcu.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend>>"%pth%hkcu.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\WinDefend_off>>"%pth%hkcu.list"
+echo HKCU:%smw% Security Health\State,AppAndBrowser_Edge%ss%Off>"%pth%hkcu.list"
+echo HKCU:%smw% Security Health\State,AppAndBrowser_Pua%ss%Off>>"%pth%hkcu.list"
+echo HKCU:%smw% Security Health\State,AppAndBrowser_StoreApps%ss%Off>>"%pth%hkcu.list"
+echo HKCU:%smw%\%cv%\AppHost,EnableWebContentEvaluation>>"%pth%hkcu.list"
+echo HKCU:%smw%\%cv%\AppHost,PreventOverride>>"%pth%hkcu.list"
+echo HKCU:%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance,Enabled>>"%pth%hkcu.list"
+echo HKCU:%smw%\%cv%\Policies\Attachments,SaveZoneInformation>>"%pth%hkcu.list"
+echo HKCU:%smw%\%cv%\Policies\Attachments,ScanWithAntiVirus>>"%pth%hkcu.list"
+echo HKCU:%spm%\Edge,%ss%Enabled>>"%pth%hkcu.list"
+echo HKCU:%spm%\Edge,%ss%PuaEnabled>>"%pth%hkcu.list"
+echo HKLM:%scc%\SafeBoot\Minimal\Win%df%>>"%pth%hkcu.list"
+echo HKLM:%scc%\SafeBoot\Minimal\Win%df%_off>>"%pth%hkcu.list"
 call :ListUWP sechealth
 call :ListUWP chxapp
 exit /b
 
 :HKLM_List
 del /f/q "%pth%hklm.list">nul 2>&1
-echo HKLM:\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\exefile\shell\open,NoSmartScreen>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\exefile\shell\runas,NoSmartScreen>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\exefile\shell\runasuser,NoSmartScreen>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\0>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\0\win64>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\FLAGS>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Classes\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\HELPDIR>>"%pth%hklm.list"
+echo HKLM:%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}>"%pth%hklm.list"
+echo HKLM:%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32>>"%pth%hklm.list"
+echo HKLM:%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32>>"%pth%hklm.list"
+echo HKLM:%scl%\exefile\shell\open,No%ss%>>"%pth%hklm.list"
+echo HKLM:%scl%\exefile\shell\runas,No%ss%>>"%pth%hklm.list"
+echo HKLM:%scl%\exefile\shell\runasuser,No%ss%>>"%pth%hklm.list"
+echo HKLM:%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}>>"%pth%hklm.list"
+echo HKLM:%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32>>"%pth%hklm.list"
+echo HKLM:%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32>>"%pth%hklm.list"
+echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}>>"%pth%hklm.list"
+echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0>>"%pth%hklm.list"
+echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\0>>"%pth%hklm.list"
+echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\0\win64>>"%pth%hklm.list"
+echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\FLAGS>>"%pth%hklm.list"
+echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\HELPDIR>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\RemovalTools\MpGears,HeartbeatTrackingIndex>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender Security Center\Device security,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender Security Center\Notifications,DisableEnhancedNotifications>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection,FilesBlockedNotificationDisabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection,NoActionNotificationDisabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection,SummaryNotificationDisabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,DisableAntiSpyware>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,DisableAntiVirus>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,HybridModeEnabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,IsServiceRunning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,ProductStatus>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,ProductType>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,PUAProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,SmartLockerMode>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender,VerifiedAndReputableTrustModeEnabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\CoreService,DisableCoreService1DSTelemetry>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\CoreService,DisableCoreServiceECSIntegration>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\CoreService,MdDisableResController>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features,EnableCACS>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features,Protection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features,TamperProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features,TamperProtectionSource>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,EnableAdsSymlinkMitigation_MpRamp>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,EnableBmProcessInfoMetastoreMaintenance_MpRamp>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,EnableCIWorkaroundOnCFAEnabled_MpRamp>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MdDisableResController>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpDisablePropBagNotification>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpDisableResourceMonitoring>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpEnableNoMetaStoreProcessInfoContainer>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpEnablePurgeHipsCache>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_AdvertiseLogonMinutesFeature>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_EnableCommonMetricsEvents>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_EnableImpersonationOnNetworkResourceScan>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_EnablePersistedScanV2>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_Kernel_EnableFolderGuardOnPostCreate>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_Kernel_SystemIoRequestWorkOnBehalfOf>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_MdDisable1ds>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_MdEnableCoreService>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpFC_RtpEnableDefenderConfigMonitoring>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs,MpForceDllHostScanExeOnOpen>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection,DisableAsyncScanOnOpen>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection,DisableRealtimeMonitoring>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection,DpaDisabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Scan,AvgCPULoadFactor>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Scan,DisableArchiveScanning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Scan,DisableEmailScanning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Scan,DisableRemovableDriveScanning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Scan,DisableScanningMappedNetworkDrivesForFullScan>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Scan,DisableScanningNetworkFiles>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Scan,LowCpuPriority>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Spynet,MAPSconcurrency>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Spynet,SpyNetReporting>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Spynet,SpyNetReportingLocation>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Spynet,SubmitSamplesConsent>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR,EnableASRConsumers>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access,EnableControlledFolderAccess>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection,EnableNetworkProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\defenderbootstrapper.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-d.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe_bd.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-d.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe_bd.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCmdRun.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCopyAccelerator.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDefenderCoreService.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpCmd.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpService.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpextms.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MRT.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsMpEng.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\secinit.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecureKernel.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthHost.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthSystray.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseGPParser.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIdentity.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseImdsCollector.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIR.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseNdr.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseSampleUploader.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseTVM.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Svchost,WebThreatDefense>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost,EnableWebContentEvaluation>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer,AicEnabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer,SmartScreenEnabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run,SecurityHealth>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance,Enabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run,SecurityHealth>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\AutorunsDisabled,SecurityHealth>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved,{09A47860-11B0-4DA5-AFA5-26D86198A780}>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked,{09A47860-11B0-4DA5-AFA5-26D86198A780}>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Windows Defender\Operational,Enabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Windows Defender\WHC,Enabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer,SettingsPageVisibility>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\MRT,DontOfferThroughWUAU>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\MRT,DontReportInfectionInformation>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter,EnabledV9>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter,PreventOverrideAppRepUnknown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Account protection,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection,DisallowExploitProtectionOverride>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Device performance and health,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Device security,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Family options,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Firewall and network protection,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications,DisableNotifications>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Systray,HideSystray>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Virus and threat protection,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender,AllowFastServiceStartup>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender,DisableAntiSpyware>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender,DisableLocalAdminMerge>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender,DisableRoutinelyTakingAction>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender,PUAProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender,RandomizeScheduleTaskTimes>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender,ServiceKeepAlive>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender,ServiceKeepAlive>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions,DisableAutoExclusions>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine,EnableFileHashComputation>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine,MpBafsExtendedTimeout>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine,MpCloudBlockLevel>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine,MpEnablePus>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\NIS\Consumers\IPS,DisableProtocolRecognition>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\NIS\Consumers\IPS,DisableSignatureRetirement>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\NIS\Consumers\IPS,ThrottleDetectionEventsRate>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Policy Manager,DisableScanningNetworkFiles>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableBehaviorMonitoring>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableInformationProtectionControl>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableIntrusionPreventionSystem>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableIOAVProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableOnAccessProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableRawWriteNotification>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableRealtimeMonitoring>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableScanOnRealtimeEnable>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,DisableScriptScanning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,LocalSettingOverrideDisableBehaviorMonitoring>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,LocalSettingOverrideDisableIntrusionPreventionSystem>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,LocalSettingOverrideDisableIOAVProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,LocalSettingOverrideDisableOnAccessProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,LocalSettingOverrideDisableRealtimeMonitoring>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,LocalSettingOverrideRealtimeScanDirection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection,RealtimeScanDirection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting,DisableEnhancedNotifications>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting,DisableGenericRePorts>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting,WppTracingComponents>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting,WppTracingLevel>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableArchiveScanning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableCatchupFullScan>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableCatchupQuickScan>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableEmailScanning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableHeuristics>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableRemovableDriveScanning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableReparsePointScanning>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableRestorePoint>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableScanningMappedNetworkDrivesForFullScan>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,DisableScanningNetworkFiles>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,LowCpuPriority>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan,ScanOnlyIfIdle>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,DisableScanOnUpdate>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,DisableScheduledSignatureUpdateOnBattery>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,DisableUpdateOnStartupWithoutEngine>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,ForceUpdateFromMU>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,RealtimeSignatureDelivery>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,ScheduleTime>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,SignatureDisableNotification>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,SignatureUpdateCatchupInterval>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates,UpdateOnStartUp>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen,ConfigureAppInstallControl>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen,ConfigureAppInstallControlEnabled>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet,DisableBlockAtFirstSeen>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet,LocalSettingOverrideSpynetReporting>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet,SpynetReporting>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet,SubmitSamplesConsent>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\UX Configuration,UILockdown>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR,ExploitGuard_ASR_Rules>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access,EnableControlledFolderAccess>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection,EnableNetworkProtection>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard,ConfigureKernelShadowStacksLaunch>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard,ConfigureSystemGuardLaunch>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard,EnableVirtualizationBasedSecurity>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard,HVCIMATRequired>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard,HypervisorEnforcedCodeIntegrity>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard,LsaCfgFlags>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard,RequirePlatformSecurityFeatures>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\System,EnableSmartScreen>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components,NotifyMalicious>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components,NotifyPasswordReuse>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components,NotifyUnsafeApp>>"%pth%hklm.list"
-echo HKLM:\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components,ServiceEnabled>>"%pth%hklm.list"
+echo HKLM:%smwd% Security Center\Device security,UILockdown>>"%pth%hklm.list"
+echo HKLM:%smwd% Security Center\Notifications,%dl%EnhancedNotifications>>"%pth%hklm.list"
+echo HKLM:%smwd% Security Center\Virus and threat protection,FilesBlockedNotification%dl%d>>"%pth%hklm.list"
+echo HKLM:%smwd% Security Center\Virus and threat protection,NoActionNotification%dl%d>>"%pth%hklm.list"
+echo HKLM:%smwd% Security Center\Virus and threat protection,SummaryNotification%dl%d>>"%pth%hklm.list"
+echo HKLM:%smwd%,%dl%AntiSpyware>>"%pth%hklm.list"
+echo HKLM:%smwd%,%dl%AntiVirus>>"%pth%hklm.list"
+echo HKLM:%smwd%,HybridModeEnabled>>"%pth%hklm.list"
+echo HKLM:%smwd%,IsServiceRunning>>"%pth%hklm.list"
+echo HKLM:%smwd%,ProductStatus>>"%pth%hklm.list"
+echo HKLM:%smwd%,ProductType>>"%pth%hklm.list"
+echo HKLM:%smwd%,PUAProtection>>"%pth%hklm.list"
+echo HKLM:%smwd%,SmartLockerMode>>"%pth%hklm.list"
+echo HKLM:%smwd%,VerifiedAndReputableTrustModeEnabled>>"%pth%hklm.list"
+echo HKLM:%smwd%\CoreService,%dl%CoreService1DSTelemetry>>"%pth%hklm.list"
+echo HKLM:%smwd%\CoreService,%dl%CoreServiceECSIntegration>>"%pth%hklm.list"
+echo HKLM:%smwd%\CoreService,Md%dl%ResController>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features,EnableCACS>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features,Protection>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features,TamperProtection>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features,TamperProtectionSource>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,EnableAdsSymlinkMitigation_MpRamp>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,EnableBmProcessInfoMetastoreMaintenance_MpRamp>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,EnableCIWorkaroundOnCFAEnabled_MpRamp>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,Md%dl%ResController>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,Mp%dl%PropBagNotification>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,Mp%dl%ResourceMonitoring>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpEnableNoMetaStoreProcessInfoContainer>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpEnablePurgeHipsCache>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_AdvertiseLogonMinutesFeature>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_EnableCommonMetricsEvents>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_EnableImpersonationOnNetworkResourceScan>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_EnablePersistedScanV2>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_Kernel_EnableFolderGuardOnPostCreate>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_Kernel_SystemIoRequestWorkOnBehalfOf>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_Md%dl%1ds>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_MdEnableCoreService>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpFC_RtpEnable%df%erConfigMonitoring>>"%pth%hklm.list"
+echo HKLM:%smwd%\Features\EcsConfigs,MpForceDllHostScanExeOnOpen>>"%pth%hklm.list"
+echo HKLM:%smwd%\Real-Time Protection,%dl%AsyncScanOnOpen>>"%pth%hklm.list"
+echo HKLM:%smwd%\Real-Time Protection,%dl%RealtimeMonitoring>>"%pth%hklm.list"
+echo HKLM:%smwd%\Real-Time Protection,Dpa%dl%d>>"%pth%hklm.list"
+echo HKLM:%smwd%\Scan,AvgCPULoadFactor>>"%pth%hklm.list"
+echo HKLM:%smwd%\Scan,%dl%ArchiveScanning>>"%pth%hklm.list"
+echo HKLM:%smwd%\Scan,%dl%EmailScanning>>"%pth%hklm.list"
+echo HKLM:%smwd%\Scan,%dl%RemovableDriveScanning>>"%pth%hklm.list"
+echo HKLM:%smwd%\Scan,%dl%ScanningMappedNetworkDrivesForFullScan>>"%pth%hklm.list"
+echo HKLM:%smwd%\Scan,%dl%ScanningNetworkFiles>>"%pth%hklm.list"
+echo HKLM:%smwd%\Scan,LowCpuPriority>>"%pth%hklm.list"
+echo HKLM:%smwd%\Spynet,MAPSconcurrency>>"%pth%hklm.list"
+echo HKLM:%smwd%\Spynet,SpyNetReporting>>"%pth%hklm.list"
+echo HKLM:%smwd%\Spynet,SpyNetReportingLocation>>"%pth%hklm.list"
+echo HKLM:%smwd%\Spynet,SubmitSamplesConsent>>"%pth%hklm.list"
+echo HKLM:%smwd%\%wd% Exploit Guard\ASR,EnableASRConsumers>>"%pth%hklm.list"
+echo HKLM:%smwd%\%wd% Exploit Guard\Controlled Folder Access,EnableControlledFolderAccess>>"%pth%hklm.list"
+echo HKLM:%smwd%\%wd% Exploit Guard\Network Protection,EnableNetworkProtection>>"%pth%hklm.list"
+echo HKLM:%smwci%\ConfigSecurityPolicy.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\DlpUserAgent.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\%df%erbootstrapper.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpam-d.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpam-fe.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpam-fe_bd.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpas-d.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpas-fe.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpas-fe_bd.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpav-d.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpav-fe.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpav-fe_bd.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MpCmdRun.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MpCopyAccelerator.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\Mp%df%erCoreService.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MpDlpCmd.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MpDlpService.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\mpextms.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MpSigStub.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MRT.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MsMpEng.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MsSense.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\NisSrv.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\OfflineScannerShell.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\secinit.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SecureKernel.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SecurityHealthHost.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SecurityHealthService.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SecurityHealthSystray.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseAP.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseAPToast.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseCM.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseGPParser.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseIdentity.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseImdsCollector.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseIR.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseNdr.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseSampleUploader.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SenseTVM.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\SgrmBroker.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\%ss%.exe>>"%pth%hklm.list"
+echo HKLM:%smw% NT\%cv%\Svchost,WebThreatDefense>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\AppHost,EnableWebContentEvaluation>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Explorer,AicEnabled>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Explorer,%ss%Enabled>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Explorer\StartupApproved\Run,SecurityHealth>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance,Enabled>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Run,SecurityHealth>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Run\Autoruns%dl%d,SecurityHealth>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Shell Extensions\Approved,{09A47860-11B0-4DA5-AFA5-26D86198A780}>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Shell Extensions\Blocked,{09A47860-11B0-4DA5-AFA5-26D86198A780}>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\WINEVT\Channels\Microsoft-Windows-%wd%\Operational,Enabled>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\WINEVT\Channels\Microsoft-Windows-%wd%\WHC,Enabled>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\Policies\Explorer,SettingsPageVisibility>>"%pth%hklm.list"
+echo HKLM:%spm%\MRT,DontOfferThroughWUAU>>"%pth%hklm.list"
+echo HKLM:%spm%\MRT,DontReportInfectionInformation>>"%pth%hklm.list"
+echo HKLM:%spm%\MicrosoftEdge\PhishingFilter>>"%pth%hklm.list"
+echo HKLM:%spm%\MicrosoftEdge\PhishingFilter,EnabledV9>>"%pth%hklm.list"
+echo HKLM:%spm%\MicrosoftEdge\PhishingFilter,PreventOverrideAppRepUnknown>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\Account protection,UILockdown>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\App and Browser protection,UILockdown>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\App and Browser protection,DisallowExploitProtectionOverride>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\Device performance and health,UILockdown>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\Device security,UILockdown>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\Family options,UILockdown>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\Firewall and network protection,UILockdown>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\Notifications,%dl%Notifications>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\Systray,HideSystray>>"%pth%hklm.list"
+echo HKLM:%spmwd% Security Center\Virus and threat protection,UILockdown>>"%pth%hklm.list"
+echo HKLM:%spmwd%,AllowFastServiceStartup>>"%pth%hklm.list"
+echo HKLM:%spmwd%,%dl%AntiSpyware>>"%pth%hklm.list"
+echo HKLM:%spmwd%,%dl%LocalAdminMerge>>"%pth%hklm.list"
+echo HKLM:%spmwd%,%dl%RoutinelyTakingAction>>"%pth%hklm.list"
+echo HKLM:%spmwd%,PUAProtection>>"%pth%hklm.list"
+echo HKLM:%spmwd%,RandomizeScheduleTaskTimes>>"%pth%hklm.list"
+echo HKLM:%spmwd%,ServiceKeepAlive>>"%pth%hklm.list"
+echo HKLM:%spmwd%,ServiceKeepAlive>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Exclusions,%dl%AutoExclusions>>"%pth%hklm.list"
+echo HKLM:%spmwd%\MpEngine,EnableFileHashComputation>>"%pth%hklm.list"
+echo HKLM:%spmwd%\MpEngine,MpBafsExtendedTimeout>>"%pth%hklm.list"
+echo HKLM:%spmwd%\MpEngine,MpCloudBlockLevel>>"%pth%hklm.list"
+echo HKLM:%spmwd%\MpEngine,MpEnablePus>>"%pth%hklm.list"
+echo HKLM:%spmwd%\NIS\Consumers\IPS,%dl%ProtocolRecognition>>"%pth%hklm.list"
+echo HKLM:%spmwd%\NIS\Consumers\IPS,%dl%SignatureRetirement>>"%pth%hklm.list"
+echo HKLM:%spmwd%\NIS\Consumers\IPS,ThrottleDetectionEventsRate>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Policy Manager,%dl%ScanningNetworkFiles>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%BehaviorMonitoring>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%InformationProtectionControl>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%IntrusionPreventionSystem>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%IOAVProtection>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%OnAccessProtection>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%RawWriteNotification>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%RealtimeMonitoring>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%ScanOnRealtimeEnable>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,%dl%ScriptScanning>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,LocalSettingOverride%dl%BehaviorMonitoring>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,LocalSettingOverride%dl%IntrusionPreventionSystem>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,LocalSettingOverride%dl%IOAVProtection>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,LocalSettingOverride%dl%OnAccessProtection>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,LocalSettingOverride%dl%RealtimeMonitoring>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,LocalSettingOverrideRealtimeScanDirection>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Real-Time Protection,RealtimeScanDirection>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Reporting,%dl%EnhancedNotifications>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Reporting,%dl%GenericRePorts>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Reporting,WppTracingComponents>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Reporting,WppTracingLevel>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%ArchiveScanning>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%CatchupFullScan>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%CatchupQuickScan>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%EmailScanning>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%Heuristics>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%RemovableDriveScanning>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%ReparsePointScanning>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%RestorePoint>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%ScanningMappedNetworkDrivesForFullScan>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,%dl%ScanningNetworkFiles>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,LowCpuPriority>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Scan,ScanOnlyIfIdle>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,%dl%ScanOnUpdate>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,%dl%ScheduledSignatureUpdateOnBattery>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,%dl%UpdateOnStartupWithoutEngine>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,ForceUpdateFromMU>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,RealtimeSignatureDelivery>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,ScheduleTime>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,Signature%dl%Notification>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,SignatureUpdateCatchupInterval>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Signature Updates,UpdateOnStartUp>>"%pth%hklm.list"
+echo HKLM:%spmwd%\%ss%,ConfigureAppInstallControl>>"%pth%hklm.list"
+echo HKLM:%spmwd%\%ss%,ConfigureAppInstallControlEnabled>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Spynet,%dl%BlockAtFirstSeen>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Spynet,LocalSettingOverrideSpynetReporting>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Spynet,SpynetReporting>>"%pth%hklm.list"
+echo HKLM:%spmwd%\Spynet,SubmitSamplesConsent>>"%pth%hklm.list"
+echo HKLM:%spmwd%\UX Configuration,UILockdown>>"%pth%hklm.list"
+echo HKLM:%spmwd%\%wd% Exploit Guard\ASR,ExploitGuard_ASR_Rules>>"%pth%hklm.list"
+echo HKLM:%spmwd%\%wd% Exploit Guard\Controlled Folder Access,EnableControlledFolderAccess>>"%pth%hklm.list"
+echo HKLM:%spmwd%\%wd% Exploit Guard\Network Protection,EnableNetworkProtection>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\DeviceGuard,ConfigureKernelShadowStacksLaunch>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\DeviceGuard,ConfigureSystemGuardLaunch>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\DeviceGuard,EnableVirtualizationBasedSecurity>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\DeviceGuard,HVCIMATRequired>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\DeviceGuard,HypervisorEnforcedCodeIntegrity>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\DeviceGuard,LsaCfgFlags>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\DeviceGuard,RequirePlatformSecurityFeatures>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\System,Enable%ss%>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\WTDS\Components,NotifyMalicious>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\WTDS\Components,NotifyPasswordReuse>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\WTDS\Components,NotifyUnsafeApp>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\WTDS\Components,ServiceEnabled>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy,VerifiedAndReputablePolicyState>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard,EnableVirtualizationBasedSecurity>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard,Locked>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard,RequirePlatformSecurityFeatures>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity,Enabled>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity,HVCIMATRequired>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity,Locked>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity,WasEnabledBy>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity,WasEnabledBySysprep>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks,AuditModeEnabled>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks,Enabled>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks,WasEnabledBy>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Control\Ubpm,CriticalMaintenance_DefenderCleanup>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Control\Ubpm,CriticalMaintenance_DefenderVerification>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderApiLogger,Start>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderAuditLogger,Start>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Allow_In>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Allow_Out>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Block_In>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Block_Out>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WindowsDefender-1>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WindowsDefender-2>>"%pth%hklm.list"
-echo HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WindowsDefender-3>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\MDCoreSvc,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\MsSecFlt,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\MsSecWfp,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\SecurityHealthService,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\Sense,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\SgrmAgent,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\SgrmBroker,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\WdNisDrv,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\WdNisSvc,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\webthreatdefsvc,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\webthreatdefusersvc,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\WinDefend,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\wscsvc,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\wtd,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\WdBoot,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\WdFilter,Start>>"%pth%hklm.list"
-echo HKLM:\System\CurrentControlset\Services\MsSecCore,Start>>"%pth%hklm.list"
+echo HKLM:%scc%\CI\Policy,VerifiedAndReputablePolicyState>>"%pth%hklm.list"
+echo HKLM:%sccd%,EnableVirtualizationBasedSecurity>>"%pth%hklm.list"
+echo HKLM:%sccd%,Locked>>"%pth%hklm.list"
+echo HKLM:%sccd%,RequirePlatformSecurityFeatures>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,Enabled>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,HVCIMATRequired>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,Locked>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,WasEnabledBy>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,WasEnabledBySysprep>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\KernelShadowStacks,AuditModeEnabled>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\KernelShadowStacks,Enabled>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\KernelShadowStacks,WasEnabledBy>>"%pth%hklm.list"
+echo HKLM:%scc%\Ubpm,CriticalMaintenance_%df%erCleanup>>"%pth%hklm.list"
+echo HKLM:%scc%\Ubpm,CriticalMaintenance_%df%erVerification>>"%pth%hklm.list"
+echo HKLM:%scc%\WMI\Autologger\%df%erApiLogger,Start>>"%pth%hklm.list"
+echo HKLM:%scc%\WMI\Autologger\%df%erAuditLogger,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Allow_In>>"%pth%hklm.list"
+echo HKLM:%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Allow_Out>>"%pth%hklm.list"
+echo HKLM:%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Block_In>>"%pth%hklm.list"
+echo HKLM:%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,WebThreatDefSvc_Block_Out>>"%pth%hklm.list"
+echo HKLM:%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,Windows%df%er-1>>"%pth%hklm.list"
+echo HKLM:%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,Windows%df%er-2>>"%pth%hklm.list"
+echo HKLM:%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System,Windows%df%er-3>>"%pth%hklm.list"
+echo HKLM:%scs%\MDCoreSvc,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\MsSecFlt,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\MsSecWfp,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\SecurityHealthService,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\Sense,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\SgrmAgent,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\SgrmBroker,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\WdNisDrv,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\WdNisSvc,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\webthreatdefsvc,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\webthreatdefusersvc,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\Win%df%,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\wscsvc,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\wtd,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\WdBoot,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\WdFilter,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\MsSecCore,Start>>"%pth%hklm.list"
 exit /b 
 
 :ListUWP
@@ -656,277 +716,277 @@ for /d %%f in ("%windir%\SystemApps\*%UWP%*") do (
 :SkipFindUwpL
 %ifNdef% UwpName exit /b
 if not exist "%UwpPath%" exit /b
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%>>"%pth%hkcu.list"
-echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%>>"%pth%hkcu.list"
-for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
-for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
+echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%>>"%pth%hkcu.list"
+echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%>>"%pth%hkcu.list"
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
 exit /b
 
 :UserSettingDone
-%reg% delete "HKLM\Software\AchillesScript" /f>nul 2>&1
+%rd% "HKLM\Software\AchillesScript" /f>nul 2>&1
 set UserSettingDone=
 exit /b
 
 :PoliciesHKCU
 %msg% "Applying policies for the current user..." "Применение политик для текущего пользователя..."
-%reg% add "HKCU\Software\Policies\Microsoft\Edge" /v "SmartScreenEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKCU\Software\Policies\Microsoft\Edge" /v "SmartScreenPuaEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\Software\AchillesScript" /v "UserSettingDone" /t REG_DWORD /d 1 /f>nul 2>&1
+%ra% "HKCU%spm%\Edge" /v "%ss%Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKCU%spm%\Edge" /v "%ss%PuaEnabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\Software\AchillesScript" /v "UserSettingDone" /t %dw% /d 1 /f>nul 2>&1
 set UserSettingDone=1
 exit /b
 
 :Policies
 %msg% "Applying group policies..." "Применение групповых политик..." 
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "AllowFastServiceStartup" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableLocalAdminMerge" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableRoutinelyTakingAction" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "PUAProtection" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "RandomizeScheduleTaskTimes" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "ServiceKeepAlive" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions" /v "DisableAutoExclusions" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine" /v "EnableFileHashComputation" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine" /v "MpBafsExtendedTimeout" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine" /v "MpCloudBlockLevel" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine" /v "MpEnablePus" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\NIS\Consumers\IPS" /v "DisableProtocolRecognition" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\NIS\Consumers\IPS" /v "DisableSignatureRetirement" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\NIS\Consumers\IPS" /v "ThrottleDetectionEventsRate" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Policy Manager" /v "DisableScanningNetworkFiles" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableBehaviorMonitoring" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableIOAVProtection" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableInformationProtectionControl" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableIntrusionPreventionSystem" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableOnAccessProtection" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableRawWriteNotification" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableScanOnRealtimeEnable" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableScriptScanning" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "LocalSettingOverrideDisableBehaviorMonitoring" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "LocalSettingOverrideDisableIOAVProtection" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "LocalSettingOverrideDisableIntrusionPreventionSystem" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "LocalSettingOverrideDisableOnAccessProtection" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "LocalSettingOverrideDisableRealtimeMonitoring" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "LocalSettingOverrideRealtimeScanDirection" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "RealtimeScanDirection" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v "LocalSettingOverrideSpynetReporting" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v "SpynetReporting" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v "SubmitSamplesConsent" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v "DisableBlockAtFirstSeen" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "DisableScanOnUpdate" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "DisableScheduledSignatureUpdateOnBattery" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "DisableUpdateOnStartupWithoutEngine" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "ForceUpdateFromMU" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "RealtimeSignatureDelivery" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "ScheduleTime" /t REG_DWORD /d "5184" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "SignatureDisableNotification" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "SignatureUpdateCatchupInterval" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates" /v "UpdateOnStartUp" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting" /v "DisableEnhancedNotifications" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting" /v "DisableGenericRePorts" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting" /v "WppTracingComponents" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting" /v "WppTracingLevel" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableArchiveScanning" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableCatchupFullScan" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableCatchupQuickScan" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableEmailScanning" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableHeuristics" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableRemovableDriveScanning" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableReparsePointScanning" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableRestorePoint" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableScanningMappedNetworkDrivesForFullScan" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableScanningNetworkFiles" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "LowCpuPriority" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "ScanOnlyIfIdle" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR" /v "ExploitGuard_ASR_Rules" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection" /v "DisallowExploitProtectionOverride" /t REG_DWORD /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%" /v "AllowFastServiceStartup" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%" /v "%dl%AntiSpyware" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%" /v "%dl%LocalAdminMerge" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%" /v "%dl%RoutinelyTakingAction" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%" /v "PUAProtection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%" /v "RandomizeScheduleTaskTimes" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%" /v "ServiceKeepAlive" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Exclusions" /v "%dl%AutoExclusions" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\MpEngine" /v "EnableFileHashComputation" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\MpEngine" /v "MpBafsExtendedTimeout" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\MpEngine" /v "MpCloudBlockLevel" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\MpEngine" /v "MpEnablePus" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\NIS\Consumers\IPS" /v "%dl%ProtocolRecognition" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\NIS\Consumers\IPS" /v "%dl%SignatureRetirement" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\NIS\Consumers\IPS" /v "ThrottleDetectionEventsRate" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Policy Manager" /v "%dl%ScanningNetworkFiles" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%BehaviorMonitoring" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%IOAVProtection" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%InformationProtectionControl" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%IntrusionPreventionSystem" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%OnAccessProtection" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%RawWriteNotification" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%RealtimeMonitoring" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%ScanOnRealtimeEnable" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "%dl%ScriptScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%BehaviorMonitoring" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%IOAVProtection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%IntrusionPreventionSystem" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%OnAccessProtection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%RealtimeMonitoring" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "LocalSettingOverrideRealtimeScanDirection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Real-Time Protection" /v "RealtimeScanDirection" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Spynet" /v "LocalSettingOverrideSpynetReporting" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Spynet" /v "SpynetReporting" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Spynet" /v "SubmitSamplesConsent" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Spynet" /v "%dl%BlockAtFirstSeen" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "%dl%ScanOnUpdate" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "%dl%ScheduledSignatureUpdateOnBattery" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "%dl%UpdateOnStartupWithoutEngine" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "ForceUpdateFromMU" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "RealtimeSignatureDelivery" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "ScheduleTime" /t %dw% /d "5184" /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "Signature%dl%Notification" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "SignatureUpdateCatchupInterval" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Signature Updates" /v "UpdateOnStartUp" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Reporting" /v "%dl%EnhancedNotifications" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Reporting" /v "%dl%GenericRePorts" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Reporting" /v "WppTracingComponents" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Reporting" /v "WppTracingLevel" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%ArchiveScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%CatchupFullScan" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%CatchupQuickScan" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%EmailScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%Heuristics" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%RemovableDriveScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%ReparsePointScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%RestorePoint" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%ScanningMappedNetworkDrivesForFullScan" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "%dl%ScanningNetworkFiles" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "LowCpuPriority" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\Scan" /v "ScanOnlyIfIdle" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\%wd% Exploit Guard\ASR" /v "ExploitGuard_ASR_Rules" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\%wd% Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\%wd% Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\App and Browser protection" /v "DisallowExploitProtectionOverride" /t %dw% /d 1 /f>nul 2>&1
 ::
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v "EnableSmartScreen" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v "ConfigureAppInstallControlEnabled" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v "ConfigureAppInstallControl" /t REG_SZ /d "Anywhere" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter" /v "EnabledV9" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter" /v "PreventOverrideAppRepUnknown" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter" /v "" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components" /v "ServiceEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components" /v "NotifyUnsafeApp" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components" /v "NotifyMalicious" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components" /v "NotifyPasswordReuse" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\Windows\System" /v "Enable%ss%" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spmwd%\%ss%" /v "ConfigureAppInstallControlEnabled" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\%ss%" /v "ConfigureAppInstallControl" /t %sz% /d "Anywhere" /f>nul 2>&1
+%ra% "HKLM%spm%\MicrosoftEdge\PhishingFilter" /v "EnabledV9" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\MicrosoftEdge\PhishingFilter" /v "PreventOverrideAppRepUnknown" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\MicrosoftEdge\PhishingFilter" /v "" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\Windows\WTDS\Components" /v "ServiceEnabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\Windows\WTDS\Components" /v "NotifyUnsafeApp" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\Windows\WTDS\Components" /v "NotifyMalicious" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\Windows\WTDS\Components" /v "NotifyPasswordReuse" /t %dw% /d 0 /f>nul 2>&1
 ::
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "HypervisorEnforcedCodeIntegrity" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "LsaCfgFlags" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "RequirePlatformSecurityFeatures" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "ConfigureSystemGuardLaunch" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "ConfigureKernelShadowStacksLaunch" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /v "HVCIMATRequired" /t REG_DWORD /d 0 /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\DeviceGuard" /v "HypervisorEnforcedCodeIntegrity" /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\DeviceGuard" /v "LsaCfgFlags" /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\DeviceGuard" /v "RequirePlatformSecurityFeatures" /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\DeviceGuard" /v "ConfigureSystemGuardLaunch" /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\DeviceGuard" /v "ConfigureKernelShadowStacksLaunch" /f>nul 2>&1
+%ra% "HKLM%spm%\Windows\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\Windows\DeviceGuard" /v "HVCIMATRequired" /t %dw% /d 0 /f>nul 2>&1
 ::
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Account protection" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Device performance and health" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Device security" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Family options" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Firewall and network protection" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications" /v "DisableNotifications" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Systray" /v "HideSystray" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\UX Configuration" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\Account protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\App and Browser protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\Device performance and health" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\Device security" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\Family options" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\Firewall and network protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\Notifications" /v "%dl%Notifications" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\Systray" /v "HideSystray" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd% Security Center\Virus and threat protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spmwd%\UX Configuration" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 ::
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\MRT" /v DontOfferThroughWUAU /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Policies\Microsoft\MRT" /v DontReportInfectionInformation /t REG_DWORD /d 1 /f>nul 2>&1
+%ra% "HKLM%spm%\MRT" /v DontOfferThroughWUAU /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%spm%\MRT" /v DontReportInfectionInformation /t %dw% /d 1 /f>nul 2>&1
 ::
-set "HidePath=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-for /f "usebackq tokens=2*" %%A in ('%reg% query "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do (
+set "HidePath=HKLM%smw%\%cv%\Policies\Explorer"
+for /f "usebackq tokens=2*" %%A in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do (
     set "SettingsPageVisibility=%%B"
 )
-%ifNdef% SettingsPageVisibility %reg% add "%HidePath%" /v "SettingsPageVisibility" /t REG_SZ /d "hide:windowsdefender" /f>nul 2>&1
-echo %SettingsPageVisibility% | find /i "windowsdefender">nul 2>&1&&goto :EndHideSetting
-%reg% add "%HidePath%" /v "SettingsPageVisibility" /t REG_SZ /d "%SettingsPageVisibility%;windowsdefender" /f>nul 2>&1
+%ifNdef% SettingsPageVisibility %ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "hide:windows%df%er" /f>nul 2>&1
+echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1&&goto :EndHideSetting
+%ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "%SettingsPageVisibility%;windows%df%er" /f>nul 2>&1
 :EndHideSetting
 exit /b
 
 :RegistryHKCU
 %msg% "Applying registry settings for the current user..." "Применение настроек реестра для текущего пользователя..." 
-%schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /Disable>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /Disable>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan" /Disable>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Verification" /Disable>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\AppID\SmartScreenSpecific" /Disable>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Cache Maintenance" /%dl%>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Cleanup" /%dl%>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Scheduled Scan" /%dl%>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Verification" /%dl%>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\AppID\%ss%Specific" /%dl%>nul 2>&1
 ::
-%reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\AppHost" /v "EnableWebContentEvaluation" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\AppHost" /v "PreventOverride" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKCU%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKCU%smw%\%cv%\AppHost" /v "PreventOverride" /t %dw% /d 0 /f>nul 2>&1
 ::
-%reg% add "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_EdgeSmartScreenOff" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_StoreAppsSmartScreenOff" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_PuaSmartScreenOff" /t REG_DWORD /d 1 /f>nul 2>&1
+%ra% "HKCU%smw% Security Health\State" /v "AppAndBrowser_Edge%ss%Off" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKCU%smw% Security Health\State" /v "AppAndBrowser_StoreApps%ss%Off" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKCU%smw% Security Health\State" /v "AppAndBrowser_Pua%ss%Off" /t %dw% /d 1 /f>nul 2>&1
 ::
-%reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments" /v "SaveZoneInformation" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments" /v "ScanWithAntiVirus" /t REG_DWORD /d 1 /f>nul 2>&1
+%ra% "HKCU%smw%\%cv%\Policies\Attachments" /v "SaveZoneInformation" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKCU%smw%\%cv%\Policies\Attachments" /v "ScanWithAntiVirus" /t %dw% /d 1 /f>nul 2>&1
 ::
-%reg% add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 call :BlockUWP sechealth
 call :BlockUWP chxapp
 exit /b
 
 :Registry
 %msg% "Applying registry settings..." "Применение настроек реестра..."
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" /v "EnableWebContentEvaluation" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" /t %dw% /d 0 /f>nul 2>&1
 ::
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /t REG_SZ /d "" /f>nul 2>&1
-%regsvr32% /u "%SystemDrive%\Program Files\Windows Defender\shellext.dll" /s>nul 2>&1
+%rd% "HKLM%smw%\%cv%\Shell Extensions\Approved" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Shell Extensions\Blocked" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /t %sz% /d "" /f>nul 2>&1
+%regsvr32% /u "%SystemDrive%\Program Files\%wd%\shellext.dll" /s>nul 2>&1
 ::
-%reg% add "HKLM\SOFTWARE\Classes\exefile\shell\open" /v "NoSmartScreen" /t REG_SZ /d "" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\exefile\shell\runas" /v "NoSmartScreen" /t REG_SZ /d "" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\exefile\shell\runasuser" /v "NoSmartScreen" /t REG_SZ /d "" /f>nul 2>&1
+%ra% "HKLM%scl%\exefile\shell\open" /v "No%ss%" /t %sz% /d "" /f>nul 2>&1
+%ra% "HKLM%scl%\exefile\shell\runas" /v "No%ss%" /t %sz% /d "" /f>nul 2>&1
+%ra% "HKLM%scl%\exefile\shell\runasuser" /v "No%ss%" /t %sz% /d "" /f>nul 2>&1
 ::
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Notifications" /v "DisableEnhancedNotifications" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "FilesBlockedNotificationDisabled" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "NoActionNotificationDisabled" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "SummaryNotificationDisabled" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "DisableAntiVirus" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "HybridModeEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "IsServiceRunning" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "PUAProtection" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "ProductStatus" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "ProductType" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% query "HKLM\SOFTWARE\Microsoft\Windows Defender\CoreService">nul 2>&1||goto :SkipCoreService
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\CoreService" /v "DisableCoreService1DSTelemetry" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\CoreService" /v "DisableCoreServiceECSIntegration" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\CoreService" /v "MdDisableResController" /t REG_DWORD /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd% Security Center\Notifications" /v "%dl%EnhancedNotifications" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "FilesBlockedNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "NoActionNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "SummaryNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "%dl%AntiSpyware" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "%dl%AntiVirus" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "HybridModeEnabled" /t %dw% /d 0 /f>nul 2>&1
+%rd% "HKLM%smwd%" /v "IsServiceRunning" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "PUAProtection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "ProductStatus" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "ProductType" /t %dw% /d 0 /f>nul 2>&1
+%rq% "HKLM%smwd%\CoreService">nul 2>&1||goto :SkipCoreService
+%ra% "HKLM%smwd%\CoreService" /v "%dl%CoreService1DSTelemetry" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\CoreService" /v "%dl%CoreServiceECSIntegration" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\CoreService" /v "Md%dl%ResController" /t %dw% /d 1 /f>nul 2>&1
 :SkipCoreService
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v "EnableCACS" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v "Protection" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v "TamperProtection" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v "TamperProtectionSource" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% query "HKLM\SOFTWARE\Microsoft\Windows Defender\EcsConfigs">nul 2>&1||goto :SkipEcsConfigs
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "EnableAdsSymlinkMitigation_MpRamp" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "EnableBmProcessInfoMetastoreMaintenance_MpRamp" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "EnableCIWorkaroundOnCFAEnabled_MpRamp" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MdDisableResController" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpDisablePropBagNotification" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpDisableResourceMonitoring" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpEnableNoMetaStoreProcessInfoContainer" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpEnablePurgeHipsCache" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_AdvertiseLogonMinutesFeature" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_EnableCommonMetricsEvents" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_EnableImpersonationOnNetworkResourceScan" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_EnablePersistedScanV2" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_Kernel_EnableFolderGuardOnPostCreate" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_Kernel_SystemIoRequestWorkOnBehalfOf" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_MdDisable1ds" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_MdEnableCoreService" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_RtpEnableDefenderConfigMonitoring" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpForceDllHostScanExeOnOpen" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "EnableCACS" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "Protection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "TamperProtection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "TamperProtectionSource" /t %dw% /d 0 /f>nul 2>&1
+%rq% "HKLM%smwd%\EcsConfigs">nul 2>&1||goto :SkipEcsConfigs
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "EnableAdsSymlinkMitigation_MpRamp" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "EnableBmProcessInfoMetastoreMaintenance_MpRamp" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "EnableCIWorkaroundOnCFAEnabled_MpRamp" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "Md%dl%ResController" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "Mp%dl%PropBagNotification" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "Mp%dl%ResourceMonitoring" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpEnableNoMetaStoreProcessInfoContainer" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpEnablePurgeHipsCache" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_AdvertiseLogonMinutesFeature" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_EnableCommonMetricsEvents" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_EnableImpersonationOnNetworkResourceScan" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_EnablePersistedScanV2" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_Kernel_EnableFolderGuardOnPostCreate" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_Kernel_SystemIoRequestWorkOnBehalfOf" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_Md%dl%1ds" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_MdEnableCoreService" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_RtpEnable%df%erConfigMonitoring" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpForceDllHostScanExeOnOpen" /t %dw% /d 0 /f>nul 2>&1
 :SkipEcsConfigs
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v "DisableAsyncScanOnOpen" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v "DpaDisabled" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "AvgCPULoadFactor" /t REG_DWORD /d "10" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableArchiveScanning" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableEmailScanning" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableRemovableDriveScanning" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableScanningMappedNetworkDrivesForFullScan" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableScanningNetworkFiles" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "LowCpuPriority" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Spynet" /v "MAPSconcurrency" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Spynet" /v "SpyNetReporting" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Spynet" /v "SpyNetReportingLocation" /t REG_MULTI_SZ /d "https://0.0.0.0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Spynet" /v "SubmitSamplesConsent" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\RemovalTools\MpGears" /v "HeartbeatTrackingIndex" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR" /v "EnableASRConsumers" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Real-Time Protection" /v "%dl%AsyncScanOnOpen" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Real-Time Protection" /v "%dl%RealtimeMonitoring" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Real-Time Protection" /v "Dpa%dl%d" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "AvgCPULoadFactor" /t %dw% /d "10" /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%ArchiveScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%EmailScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%RemovableDriveScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%ScanningMappedNetworkDrivesForFullScan" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%ScanningNetworkFiles" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "LowCpuPriority" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smwd%\Spynet" /v "MAPSconcurrency" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Spynet" /v "SpyNetReporting" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Spynet" /v "SpyNetReportingLocation" /t REG_MULTI_SZ /d "https://0.0.0.0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Spynet" /v "SubmitSamplesConsent" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\SOFTWARE\Microsoft\RemovalTools\MpGears" /v "HeartbeatTrackingIndex" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\%wd% Exploit Guard\ASR" /v "EnableASRConsumers" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\%wd% Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\%wd% Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t %dw% /d 0 /f>nul 2>&1
 ::
-%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "SecurityHealth">nul 2>&1&&(
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "SecurityHealth" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\AutorunsDisabled" /v "SecurityHealth" /t REG_EXPAND_SZ /d "^%windir^%\system32\SecurityHealthSystray.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /v "SecurityHealth" /t REG_BINARY /d "FFFFFFFFFFFFFFFFFFFFFFFF" /f>nul 2>&1
+%rq% "HKLM%smw%\%cv%\Run" /v "SecurityHealth">nul 2>&1&&(
+%rd% "HKLM%smw%\%cv%\Run" /v "SecurityHealth" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Run\Autoruns%dl%d" /v "SecurityHealth" /t REG_EXPAND_SZ /d "^%windir^%\system32\SecurityHealthSystray.exe" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Explorer\StartupApproved\Run" /v "SecurityHealth" /t REG_BINARY /d "FFFFFFFFFFFFFFFFFFFFFFFF" /f>nul 2>&1
 )
 ::
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 ::
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "SmartLockerMode" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "VerifiedAndReputableTrustModeEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKLM%scc%\CI\Policy" /v "VerifiedAndReputablePolicyState" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "SmartLockerMode" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "VerifiedAndReputableTrustModeEnabled" /t %dw% /d 0 /f>nul 2>&1
 ::
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Device security" /v "UILockdown" /t REG_DWORD /d 1 /f>nul 2>&1
-%reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBy" /f>nul 2>&1
-%reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBySysprep" /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard" /v "RequirePlatformSecurityFeatures" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard" /v "Locked" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "HVCIMATRequired" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" /v "AuditModeEnabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" /v "WasEnabledBy" /t REG_DWORD /d 4 /f>nul 2>&1
+%ra% "HKLM%smwd% Security Center\Device security" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%rd% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBy" /f>nul 2>&1
+%rd% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBySysprep" /f>nul 2>&1
+%ra% "HKLM%sccd%" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%" /v "RequirePlatformSecurityFeatures" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%" /v "Locked" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "HVCIMATRequired" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "AuditModeEnabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "WasEnabledBy" /t %dw% /d 4 /f>nul 2>&1
 ::
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Windows Defender\Operational" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Windows Defender\WHC" /v "Enabled" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderApiLogger" /v "Start" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderAuditLogger" /v "Start" /t REG_DWORD /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WINEVT\Channels\Microsoft-Windows-%wd%\Operational" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WINEVT\Channels\Microsoft-Windows-%wd%\WHC" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%scc%\WMI\Autologger\%df%erApiLogger" /v "Start" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%scc%\WMI\Autologger\%df%erAuditLogger" /v "Start" /t %dw% /d 0 /f>nul 2>&1
 ::
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_In" /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_Out" /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_In" /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_Out" /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-1" /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-2" /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-3" /f>nul 2>&1
+%rd% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_In" /f>nul 2>&1
+%rd% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_Out" /f>nul 2>&1
+%rd% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_In" /f>nul 2>&1
+%rd% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_Out" /f>nul 2>&1
+%rd% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "Windows%df%er-1" /f>nul 2>&1
+%rd% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "Windows%df%er-2" /f>nul 2>&1
+%rd% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "Windows%df%er-3" /f>nul 2>&1
 ::
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\Ubpm" /v "CriticalMaintenance_DefenderCleanup" /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\Ubpm" /v "CriticalMaintenance_DefenderVerification" /f>nul 2>&1
+%rd% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erCleanup" /f>nul 2>&1
+%rd% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erVerification" /f>nul 2>&1
 ::
-%reg% delete "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
+%rd% "HKLM%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
+%rd% "HKLM%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
+%rd% "HKLM\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
 ::
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "SmartScreenEnabled" /t REG_SZ /d "Off" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "AicEnabled" /t REG_SZ /d "Anywhere" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Explorer" /v "%ss%Enabled" /t %sz% /d "Off" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Explorer" /v "AicEnabled" /t %sz% /d "Anywhere" /f>nul 2>&1
 ::
 exit /b
 
@@ -938,93 +998,93 @@ for /f "delims=" %%a in ('%powershell% -ExecutionPolicy Bypass -Command "(Get-Ap
 for /f "delims=" %%a in ('%powershell% -ExecutionPolicy Bypass -Command "(Get-AppXPackage -AllUsers | where {$_ -like '*%UWP%*'}).InstallLocation"') do set "UwpPath=%%a"
 if not defined UwpName exit /b
 if not exist "%UwpPath%" exit /b
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
-for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1)
-for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1)
+%ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (%ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1)
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (%ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1)
 exit /b
 
 :Services
 %msg% "Disabling the launch of services and drivers..." "Отключение запуска служб и драйверов..."
-for %%s in (WinDefend MDCoreSvc WdNisSvc Sense wscsvc SgrmBroker SecurityHealthService webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd) do (
-%reg% query "HKLM\System\CurrentControlset\Services\%%~s">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\%%~s" /v "Start" /t REG_DWORD /d 4 /f>nul 2>&1
+for %%s in (Win%df% MDCoreSvc WdNisSvc Sense wscsvc SgrmBroker SecurityHealthService webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd) do (
+%rq% "HKLM%scs%\%%~s">nul 2>&1&&%ra% "HKLM%scs%\%%~s" /v "Start" /t %dw% /d 4 /f>nul 2>&1
 )
 ::
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurentVersion\Svchost" /v "WebThreatDefense" /f>nul 2>&1
+%rd% "HKLM%smw% NT\CurentVersion\Svchost" /v "WebThreatDefense" /f>nul 2>&1
 exit /b
 
 :Block
 %msg% "Block process launch via fake Debugger" "Блокировка запуска процессов через поддельный отладчик"
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\defenderbootstrapper.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-d.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe_bd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCmdRun.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCopyAccelerator.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDefenderCoreService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpCmd.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpextms.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsMpEng.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\secinit.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecureKernel.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthHost.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthSystray.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseGPParser.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIdentity.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseImdsCollector.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIR.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseNdr.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseSampleUploader.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseTVM.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
-if exist "%sysdir%\MRT.exe" %reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MRT.exe" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\ConfigSecurityPolicy.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\DlpUserAgent.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\%df%erbootstrapper.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpam-d.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpam-fe.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpam-fe_bd.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpas-d.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpas-fe.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpas-fe_bd.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpav-d.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpav-fe.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpav-fe_bd.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\MpCmdRun.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\MpCopyAccelerator.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\Mp%df%erCoreService.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\MpDlpCmd.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\MpDlpService.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\mpextms.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\MpSigStub.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\MsMpEng.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\MsSense.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\NisSrv.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\OfflineScannerShell.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\secinit.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SecureKernel.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SecurityHealthHost.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SecurityHealthService.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SecurityHealthSystray.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseAP.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseAPToast.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseCM.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseGPParser.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseIdentity.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseImdsCollector.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseIR.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseNdr.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseSampleUploader.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SenseTVM.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\SgrmBroker.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\%ss%.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+if exist "%sysdir%\MRT.exe" %ra% "HKLM%smwci%\MRT.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 exit /b
 
 :BlockProcess
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\%~1" /v "Debugger" /t REG_SZ /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\%~1" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 exit /b %errorlevel%
 
 :UnBlockProcess
-set "unbl=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\%~1"
-%reg% delete "%unbl%" /v "Debugger" /f>nul 2>&1
-%reg% query "%unbl%" /v *>nul 2>&1
-if %errorlevel%==1 %reg% delete "%unbl%" /f>nul 2>&1
+set "unbl=HKLM%smwci%\%~1"
+%rd% "%unbl%" /v "Debugger" /f>nul 2>&1
+%rq% "%unbl%" /v *>nul 2>&1
+if %errorlevel%==1 %rd% "%unbl%" /f>nul 2>&1
 exit /b %errorlevel%
 
 :RestoreCurrentUser
 %msg% "Restore default setting for current user..." "Восстановление настроек по умолчанию для текущего пользователя..."
-%regsvr32% /i "%SystemDrive%\Program Files\Windows Defender\shellext.dll" /s>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /Enable>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /Enable>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan" /Enable>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Verification" /Enable>nul 2>&1
-%schtasks% /Change /TN "Microsoft\Windows\AppID\SmartScreenSpecific" /Enable>nul 2>&1
-%reg% delete "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_EdgeSmartScreenOff" /f>nul 2>&1
-%reg% delete "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_PuaSmartScreenOff" /f>nul 2>&1
-%reg% delete "HKCU\Software\Microsoft\Windows Security Health\State" /v "AppAndBrowser_StoreAppsSmartScreenOff" /f>nul 2>&1
-%reg% delete "HKCU\Software\Microsoft\Windows\CurrentVersion\AppHost" /v "EnableWebContentEvaluation" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% delete "HKCU\Software\Microsoft\Windows\CurrentVersion\AppHost" /v "PreventOverride" /f>nul 2>&1
-%reg% delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /f>nul 2>&1
-%reg% delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments" /f>nul 2>&1
-%reg% delete "HKCU\Software\Policies\Microsoft\Edge" /f>nul 2>&1
+%regsvr32% /i "%SystemDrive%\Program Files\%wd%\shellext.dll" /s>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Cache Maintenance" /Enable>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Cleanup" /Enable>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Scheduled Scan" /Enable>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Verification" /Enable>nul 2>&1
+%schtasks% /Change /TN "Microsoft\Windows\AppID\%ss%Specific" /Enable>nul 2>&1
+%rd% "HKCU%smw% Security Health\State" /v "AppAndBrowser_Edge%ss%Off" /f>nul 2>&1
+%rd% "HKCU%smw% Security Health\State" /v "AppAndBrowser_Pua%ss%Off" /f>nul 2>&1
+%rd% "HKCU%smw% Security Health\State" /v "AppAndBrowser_StoreApps%ss%Off" /f>nul 2>&1
+%rd% "HKCU%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" /t %dw% /d "1" /f>nul 2>&1
+%rd% "HKCU%smw%\%cv%\AppHost" /v "PreventOverride" /f>nul 2>&1
+%rd% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /f>nul 2>&1
+%rd% "HKCU%smw%\%cv%\Policies\Attachments" /f>nul 2>&1
+%rd% "HKCU%spm%\Edge" /f>nul 2>&1
 call :UnBlockUWP sechealth
 call :UnBlockUWP chxapp
 if exist "%save%MySecurityDefaults.reg" (
@@ -1038,193 +1098,193 @@ exit /b
 
 :Restore
 %msg% "Restore default setting for system..." "Восстановление настроек по умолчанию для всей системы..."
-set "HidePath=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-for /f "usebackq tokens=2*" %%A in ('%reg% query "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do (
+set "HidePath=HKLM%smw%\%cv%\Policies\Explorer"
+for /f "usebackq tokens=2*" %%A in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do (
     set "SettingsPageVisibility=%%B"
 )
 %ifNdef% SettingsPageVisibility goto :SkipRestoreVisibility
-echo %SettingsPageVisibility% | find /i "windowsdefender">nul 2>&1&&goto :SkipRestoreVisibility
-set SettingsPageVisibility=%SettingsPageVisibility:windowsdefender;=%
-set SettingsPageVisibility=%SettingsPageVisibility:windowsdefender=%
+echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1&&goto :SkipRestoreVisibility
+set SettingsPageVisibility=%SettingsPageVisibility:windows%df%er;=%
+set SettingsPageVisibility=%SettingsPageVisibility:windows%df%er=%
 if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
-%reg% add "%HidePath%" /v "SettingsPageVisibility" /t REG_SZ /d "%SettingsPageVisibility%" /f>nul 2>&1
+%ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "%SettingsPageVisibility%" /f>nul 2>&1
 :SkipRestoreVisibility
-%reg% add "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /ve /t REG_SZ /d "SmartScreen" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /v "AppID" /t REG_SZ /d "{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /ve /t REG_SZ /d "%windir%\System32\smartscreenps.dll" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /v "ThreadingModel" /t REG_SZ /d "Both" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32" /ve /t REG_SZ /d "%windir%\System32\smartscreen.exe" /f>nul 2>&1
-%ifNdef% ProgramFiles(x86) goto :SkipRestoreSmartscreen
-%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /ve /t REG_SZ /d "SmartScreen" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /v "AppID" /t REG_SZ /d "{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /ve /t REG_SZ /d "%windir%\SysWOW64\smartscreenps.dll" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /v "ThreadingModel" /t REG_SZ /d "Both" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Classes\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32" /ve /t REG_SZ /d "%windir%\SysWOW64\smartscreen.exe" /f>nul 2>&1
-:SkipRestoreSmartscreen
-%reg% delete "HKLM\SOFTWARE\Classes\exefile\shell\open" /v "NoSmartScreen" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Classes\exefile\shell\runas" /v "NoSmartScreen" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Classes\exefile\shell\runasuser" /v "NoSmartScreen" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\RemovalTools\MpGears" /v "HeartbeatTrackingIndex" /t REG_DWORD /d "2" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Device security" /v "UILockdown" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Notifications" /v "DisableEnhancedNotifications" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "FilesBlockedNotificationDisabled" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "NoActionNotificationDisabled" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender Security Center\Virus and threat protection" /v "SummaryNotificationDisabled" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "DisableAntiVirus" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "HybridModeEnabled" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "IsServiceRunning" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "ProductStatus" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "ProductType" /t REG_DWORD /d "2" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "PUAProtection" /t REG_DWORD /d "2" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "SmartLockerMode" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "VerifiedAndReputableTrustModeEnabled" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v "SacLearningModeSwitch" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% query "HKLM\SOFTWARE\Microsoft\Windows Defender\CoreService">nul 2>&1||goto :SkipRestoreCoreService
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\CoreService" /v "DisableCoreService1DSTelemetry" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\CoreService" /v "DisableCoreServiceECSIntegration" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\CoreService" /v "MdDisableResController" /t REG_DWORD /d "0" /f>nul 2>&1
+%ra% "HKLM%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /ve /t %sz% /d "%ss%" /f>nul 2>&1
+%ra% "HKLM%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /v "AppID" /t %sz% /d "{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
+%ra% "HKLM%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /ve /t %sz% /d "%windir%\System32\%ss%ps.dll" /f>nul 2>&1
+%ra% "HKLM%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /v "ThreadingModel" /t %sz% /d "Both" /f>nul 2>&1
+%ra% "HKLM%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32" /ve /t %sz% /d "%windir%\System32\%ss%.exe" /f>nul 2>&1
+%ifNdef% ProgramFiles(x86) goto :SkipRestore%ss%
+%ra% "HKLM%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /ve /t %sz% /d "%ss%" /f>nul 2>&1
+%ra% "HKLM%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /v "AppID" /t %sz% /d "{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
+%ra% "HKLM%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /ve /t %sz% /d "%windir%\SysWOW64\%ss%ps.dll" /f>nul 2>&1
+%ra% "HKLM%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32" /v "ThreadingModel" /t %sz% /d "Both" /f>nul 2>&1
+%ra% "HKLM%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32" /ve /t %sz% /d "%windir%\SysWOW64\%ss%.exe" /f>nul 2>&1
+:SkipRestore%ss%
+%rd% "HKLM%scl%\exefile\shell\open" /v "No%ss%" /f>nul 2>&1
+%rd% "HKLM%scl%\exefile\shell\runas" /v "No%ss%" /f>nul 2>&1
+%rd% "HKLM%scl%\exefile\shell\runasuser" /v "No%ss%" /f>nul 2>&1
+%ra% "HKLM\SOFTWARE\Microsoft\RemovalTools\MpGears" /v "HeartbeatTrackingIndex" /t %dw% /d "2" /f>nul 2>&1
+%rd% "HKLM%smwd% Security Center\Device security" /v "UILockdown" /f>nul 2>&1
+%rd% "HKLM%smwd% Security Center\Notifications" /v "%dl%EnhancedNotifications" /f>nul 2>&1
+%rd% "HKLM%smwd% Security Center\Virus and threat protection" /v "FilesBlockedNotification%dl%d" /f>nul 2>&1
+%rd% "HKLM%smwd% Security Center\Virus and threat protection" /v "NoActionNotification%dl%d" /f>nul 2>&1
+%rd% "HKLM%smwd% Security Center\Virus and threat protection" /v "SummaryNotification%dl%d" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "%dl%AntiSpyware" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "%dl%AntiVirus" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "HybridModeEnabled" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "IsServiceRunning" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "ProductStatus" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "ProductType" /t %dw% /d "2" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "PUAProtection" /t %dw% /d "2" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "SmartLockerMode" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "VerifiedAndReputableTrustModeEnabled" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%" /v "SacLearningModeSwitch" /t %dw% /d "0" /f>nul 2>&1
+%rq% "HKLM%smwd%\CoreService">nul 2>&1||goto :SkipRestoreCoreService
+%ra% "HKLM%smwd%\CoreService" /v "%dl%CoreService1DSTelemetry" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\CoreService" /v "%dl%CoreServiceECSIntegration" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\CoreService" /v "Md%dl%ResController" /t %dw% /d "0" /f>nul 2>&1
 :SkipRestoreCoreService
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v "EnableCACS" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v "Protection" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v "TamperProtection" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v "TamperProtectionSource" /t REG_DWORD /d "5" /f>nul 2>&1
-%reg% query "HKLM\SOFTWARE\Microsoft\Windows Defender\EcsConfigs">nul 2>&1||goto :SkipRestoreEcsConfigs
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "EnableAdsSymlinkMitigation_MpRamp" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "EnableBmProcessInfoMetastoreMaintenance_MpRamp" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "EnableCIWorkaroundOnCFAEnabled_MpRamp" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MdDisableResController" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpDisablePropBagNotification" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpDisableResourceMonitoring" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpEnableNoMetaStoreProcessInfoContainer" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpEnablePurgeHipsCache" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_AdvertiseLogonMinutesFeature" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_EnableCommonMetricsEvents" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_EnableImpersonationOnNetworkResourceScan" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_EnablePersistedScanV2" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_Kernel_EnableFolderGuardOnPostCreate" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_Kernel_SystemIoRequestWorkOnBehalfOf" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_MdDisable1ds" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_MdEnableCoreService" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpFC_RtpEnableDefenderConfigMonitoring" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features\EcsConfigs" /v "MpForceDllHostScanExeOnOpen" /t REG_DWORD /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "EnableCACS" /t %dw% /d "0" /f>nul 2>&1
+%rd% "HKLM%smwd%\Features" /v "Protection" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "TamperProtection" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "TamperProtectionSource" /t %dw% /d "5" /f>nul 2>&1
+%rq% "HKLM%smwd%\EcsConfigs">nul 2>&1||goto :SkipRestoreEcsConfigs
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "EnableAdsSymlinkMitigation_MpRamp" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "EnableBmProcessInfoMetastoreMaintenance_MpRamp" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "EnableCIWorkaroundOnCFAEnabled_MpRamp" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "Md%dl%ResController" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "Mp%dl%PropBagNotification" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "Mp%dl%ResourceMonitoring" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpEnableNoMetaStoreProcessInfoContainer" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpEnablePurgeHipsCache" /t %dw% /d "1" /f>nul 2>&1
+%rd% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_AdvertiseLogonMinutesFeature" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_EnableCommonMetricsEvents" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_EnableImpersonationOnNetworkResourceScan" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_EnablePersistedScanV2" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_Kernel_EnableFolderGuardOnPostCreate" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_Kernel_SystemIoRequestWorkOnBehalfOf" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_Md%dl%1ds" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_MdEnableCoreService" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpFC_RtpEnable%df%erConfigMonitoring" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Features\EcsConfigs" /v "MpForceDllHostScanExeOnOpen" /t %dw% /d "1" /f>nul 2>&1
 :SkipRestoreEcsConfigs
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v "DisableAsyncScanOnOpen" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v "DpaDisabled" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "AvgCPULoadFactor" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableArchiveScanning" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableEmailScanning" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableRemovableDriveScanning" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableScanningMappedNetworkDrivesForFullScan" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "DisableScanningNetworkFiles" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender\Scan" /v "LowCpuPriority" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Spynet" /v "MAPSconcurrency" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Spynet" /v "SpyNetReporting" /t REG_DWORD /d "2" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Spynet" /v "SpyNetReportingLocation" /t REG_SZ /d "SOAP:https://wdcp.microsoft.com/WdCpSrvc.asmx SOAP:https://wdcpalt.microsoft.com/WdCpSrvc.asmx REST:https://wdcp.microsoft.com/wdcp.svc/submitReport REST:https://wdcpalt.microsoft.com/wdcp.svc/submitReport BOND:https://wdcp.microsoft.com/wdcp.svc/bond/submitreport BOND:https://wdcpalt.microsoft.com/wdcp.svc/bond/submitreport" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Spynet" /v "SubmitSamplesConsent" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR" /v "EnableASRConsumers" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t REG_DWORD /d "0" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ConfigSecurityPolicy.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DlpUserAgent.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\defenderbootstrapper.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-d.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpam-fe_bd.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-d.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpas-fe_bd.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-d.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpav-fe_bd.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCmdRun.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpCopyAccelerator.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDefenderCoreService.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpCmd.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpDlpService.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mpextms.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MpSigStub.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsMpEng.exe" /v "Debugger" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MsSense.exe" /v "Debugger" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\NisSrv.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\OfflineScannerShell.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\secinit.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecureKernel.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthHost.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthService.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SecurityHealthSystray.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAP.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseAPToast.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseCM.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseGPParser.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIdentity.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseImdsCollector.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseIR.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseNdr.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseSampleUploader.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SenseTVM.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SgrmBroker.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\smartscreen.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\MRT.exe" /v "Debugger" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Svchost" /v "WebThreatDefense" /t REG_SZ /d "webthreatdefsvc" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" /v "EnableWebContentEvaluation" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "AicEnabled" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v "SmartScreenEnabled" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /v "SecurityHealth" /t REG_BINARY /d "040000000000000000000000" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "SecurityHealth" /t REG_SZ /d "C:\WINDOWS\system32\SecurityHealthSystray.exe" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\AutorunsDisabled" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /t REG_SZ /d "EPP" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Windows Defender\Operational" /v "Enabled" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Windows Defender\WHC" /v "Enabled" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v "EnableSmartScreen" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /ve /t REG_SZ /d "SmartScreen" /f>nul 2>&1
-%reg% add "HKLM\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /v "AppID" /t REG_SZ /d "{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\ControlSet001\Control\CI\Protected" /v "VerifiedAndReputablePolicyStateMinValueSeen" /t REG_DWORD /d "2" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\CI\Protected" /v "VerifiedAndReputablePolicyStateMinValueSeen" /t REG_DWORD /d "2" /f>nul 2>&1
-%reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /f>nul 2>&1
-%reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard" /v "Locked" /f>nul 2>&1
-%reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard" /v "RequirePlatformSecurityFeatures" /f>nul 2>&1
-%reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /f>nul 2>&1
-%reg% delete "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\Ubpm" /v "CriticalMaintenance_DefenderCleanup" /t REG_SZ /d "NT Task\Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\Ubpm" /v "CriticalMaintenance_DefenderVerification" /t REG_SZ /d "NT Task\Microsoft\Windows\Windows Defender\Windows Defender Verification" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderApiLogger" /v "Start" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\DefenderAuditLogger" /v "Start" /t REG_DWORD /d "1" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_In" /t REG_SZ /d "v2.0|Action=Allow|Dir=In|App=%%SystemRoot%%\system32\svchost.exe|Svc=WebThreatDefSvc|LPort=443|Protocol=6|Name=Allow WebThreatDefSvc to receive from port 443|" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_Out" /t REG_SZ /d "v2.0|Action=Allow|Dir=Out|App=%%SystemRoot%%\system32\svchost.exe|Svc=WebThreatDefSvc|RPort=443|Protocol=6|Name=Allow WebThreatDefSvc to send to port 443|" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_In" /t REG_SZ /d "v2.0|Action=Block|Dir=In|App=%%SystemRoot%%\system32\svchost.exe|Svc=WebThreatDefSvc|Name=Block inbound traffic to WebThreatDefSvc|" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_Out" /t REG_SZ /d "v2.0|Action=Block|Dir=Out|App=%%SystemRoot%%\system32\svchost.exe|Svc=WebThreatDefSvc|Name=Block outbound traffic to WebThreatDefSvc|" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-1" /t REG_SZ /d "v2.0|Action=Allow|Active=TRUE|Dir=Out|Protocol=6|App=%%ProgramFiles%%\Windows Defender\MsMpEng.exe|Svc=WinDefend|Name=Allow Out TCP traffic from WinDefend|" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-2" /t REG_SZ /d "v2.0|Action=Block|Active=TRUE|Dir=In|App=%%ProgramFiles%%\Windows Defender\MsMpEng.exe|Svc=WinDefend|Name=Block All In traffic to WinDefend|" /f>nul 2>&1
-%reg% add "HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WindowsDefender-3" /t REG_SZ /d "v2.0|Action=Block|Active=TRUE|Dir=Out|App=%%ProgramFiles%%\Windows Defender\MsMpEng.exe|Svc=WinDefend|Name=Block All Out traffic from WinDefend|" /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\MDCoreSvc">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\MDCoreSvc" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\MsSecCore">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\MsSecCore" /v "Start" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\MsSecFlt">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\MsSecFlt" /v "Start" /t REG_DWORD /d 3 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\MsSecWfp">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\MsSecWfp" /v "Start" /t REG_DWORD /d 3 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\SecurityHealthService">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\SecurityHealthService" /v "Start" /t REG_DWORD /d 3 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\Sense">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\Sense" /v "Start" /t REG_DWORD /d 3 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\SgrmAgent">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\SgrmAgent" /v "Start" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\SgrmBroker">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\SgrmBroker" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\WdBoot">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\WdBoot" /v "Start" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\WdFilter">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\WdFilter" /v "Start" /t REG_DWORD /d 0 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\WdNisDrv">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\WdNisDrv" /v "Start" /t REG_DWORD /d 3 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\WdNisSvc">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\WdNisSvc" /v "Start" /t REG_DWORD /d 3 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\webthreatdefsvc">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\webthreatdefsvc" /v "Start" /t REG_DWORD /d 3 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\webthreatdefusersvc">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\webthreatdefusersvc" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\WinDefend">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\WinDefend" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\wscsvc">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\wscsvc" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
-%reg% query "HKLM\System\CurrentControlset\Services\wtd">nul 2>&1&&%reg% add "HKLM\System\CurrentControlset\Services\wtd" /v "Start" /t REG_DWORD /d 2 /f>nul 2>&1
+%ra% "HKLM%smwd%\Real-Time Protection" /v "%dl%AsyncScanOnOpen" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Real-Time Protection" /v "%dl%RealtimeMonitoring" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Real-Time Protection" /v "Dpa%dl%d" /t %dw% /d "0" /f>nul 2>&1
+%rd% "HKLM%smwd%\Scan" /v "AvgCPULoadFactor" /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%ArchiveScanning" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%EmailScanning" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%RemovableDriveScanning" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%ScanningMappedNetworkDrivesForFullScan" /t %dw% /d "0" /f>nul 2>&1
+%ra% "HKLM%smwd%\Scan" /v "%dl%ScanningNetworkFiles" /f>nul 2>&1
+%rd% "HKLM%smwd%\Scan" /v "LowCpuPriority" /f>nul 2>&1
+%ra% "HKLM%smwd%\Spynet" /v "MAPSconcurrency" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smwd%\Spynet" /v "SpyNetReporting" /t %dw% /d "2" /f>nul 2>&1
+%ra% "HKLM%smwd%\Spynet" /v "SpyNetReportingLocation" /t %sz% /d "SOAP:https://wdcp.microsoft.com/WdCpSrvc.asmx SOAP:https://wdcpalt.microsoft.com/WdCpSrvc.asmx REST:https://wdcp.microsoft.com/wdcp.svc/submitReport REST:https://wdcpalt.microsoft.com/wdcp.svc/submitReport BOND:https://wdcp.microsoft.com/wdcp.svc/bond/submitreport BOND:https://wdcpalt.microsoft.com/wdcp.svc/bond/submitreport" /f>nul 2>&1
+%ra% "HKLM%smwd%\Spynet" /v "SubmitSamplesConsent" /t %dw% /d "1" /f>nul 2>&1
+%rd% "HKLM%smwd%\%wd% Exploit Guard\ASR" /v "EnableASRConsumers" /f>nul 2>&1
+%rd% "HKLM%smwd%\%wd% Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /f>nul 2>&1
+%ra% "HKLM%smwd%\%wd% Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t %dw% /d "0" /f>nul 2>&1
+%rd% "HKLM%smwci%\ConfigSecurityPolicy.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\DlpUserAgent.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\%df%erbootstrapper.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpam-d.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpam-fe.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpam-fe_bd.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpas-d.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpas-fe.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpas-fe_bd.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpav-d.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpav-fe.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpav-fe_bd.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\MpCmdRun.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\MpCopyAccelerator.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\Mp%df%erCoreService.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\MpDlpCmd.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\MpDlpService.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\mpextms.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\MpSigStub.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\MsMpEng.exe" /v "Debugger" /f>nul 2>&1
+%rd% "HKLM%smwci%\MsSense.exe" /v "Debugger" /f>nul 2>&1
+%rd% "HKLM%smwci%\NisSrv.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\OfflineScannerShell.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\secinit.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SecureKernel.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SecurityHealthHost.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SecurityHealthService.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SecurityHealthSystray.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseAP.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseAPToast.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseCM.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseGPParser.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseIdentity.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseImdsCollector.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseIR.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseNdr.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseSampleUploader.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SenseTVM.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\SgrmBroker.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\%ss%.exe" /f>nul 2>&1
+%rd% "HKLM%smwci%\MRT.exe" /v "Debugger" /f>nul 2>&1
+%ra% "HKLM%smw% NT\%cv%\Svchost" /v "WebThreatDefense" /t %sz% /d "webthreatdefsvc" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" /t %dw% /d "1" /f>nul 2>&1
+%rd% "HKLM%smw%\%cv%\Explorer" /v "AicEnabled" /f>nul 2>&1
+%rd% "HKLM%smw%\%cv%\Explorer" /v "%ss%Enabled" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Explorer\StartupApproved\Run" /v "SecurityHealth" /t REG_BINARY /d "040000000000000000000000" /f>nul 2>&1
+%rd% "HKLM%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Run" /v "SecurityHealth" /t %sz% /d "C:\WINDOWS\system32\SecurityHealthSystray.exe" /f>nul 2>&1
+%rd% "HKLM%smw%\%cv%\Run\Autoruns%dl%d" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\Shell Extensions\Approved" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /t %sz% /d "EPP" /f>nul 2>&1
+%rd% "HKLM%smw%\%cv%\Shell Extensions\Blocked" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WINEVT\Channels\Microsoft-Windows-%wd%\Operational" /v "Enabled" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WINEVT\Channels\Microsoft-Windows-%wd%\WHC" /v "Enabled" /t %dw% /d "1" /f>nul 2>&1
+%rd% "HKLM%spm%\MicrosoftEdge\PhishingFilter" /f>nul 2>&1
+%rd% "HKLM%spmwd% Security Center" /f>nul 2>&1
+%rd% "HKLM%spmwd%" /f>nul 2>&1
+%rd% "HKLM%spmwd%\%wd% Exploit Guard" /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\DeviceGuard" /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\System" /v "Enable%ss%" /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\WTDS\Components" /f>nul 2>&1
+%ra% "HKLM\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /ve /t %sz% /d "%ss%" /f>nul 2>&1
+%ra% "HKLM\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /v "AppID" /t %sz% /d "{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
+%ra% "HKLM\SYSTEM\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM\SYSTEM\ControlSet001\Control\CI\Protected" /v "VerifiedAndReputablePolicyStateMinValueSeen" /t %dw% /d "2" /f>nul 2>&1
+%ra% "HKLM%scc%\CI\Policy" /v "VerifiedAndReputablePolicyState" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%scc%\CI\Protected" /v "VerifiedAndReputablePolicyStateMinValueSeen" /t %dw% /d "2" /f>nul 2>&1
+%rd% "HKLM%sccd%" /v "EnableVirtualizationBasedSecurity" /f>nul 2>&1
+%rd% "HKLM%sccd%" /v "Locked" /f>nul 2>&1
+%rd% "HKLM%sccd%" /v "RequirePlatformSecurityFeatures" /f>nul 2>&1
+%rd% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /f>nul 2>&1
+%rd% "HKLM%sccd%\Scenarios\KernelShadowStacks" /f>nul 2>&1
+%ra% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erCleanup" /t %sz% /d "NT Task\Microsoft\Windows\%wd%\%wd% Cleanup" /f>nul 2>&1
+%ra% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erVerification" /t %sz% /d "NT Task\Microsoft\Windows\%wd%\%wd% Verification" /f>nul 2>&1
+%ra% "HKLM%scc%\WMI\Autologger\%df%erApiLogger" /v "Start" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%scc%\WMI\Autologger\%df%erAuditLogger" /v "Start" /t %dw% /d "1" /f>nul 2>&1
+%ra% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_In" /t %sz% /d "v2.0|Action=Allow|Dir=In|App=%%SystemRoot%%\system32\svchost.exe|Svc=WebThreatDefSvc|LPort=443|Protocol=6|Name=Allow WebThreatDefSvc to receive from port 443|" /f>nul 2>&1
+%ra% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Allow_Out" /t %sz% /d "v2.0|Action=Allow|Dir=Out|App=%%SystemRoot%%\system32\svchost.exe|Svc=WebThreatDefSvc|RPort=443|Protocol=6|Name=Allow WebThreatDefSvc to send to port 443|" /f>nul 2>&1
+%ra% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_In" /t %sz% /d "v2.0|Action=Block|Dir=In|App=%%SystemRoot%%\system32\svchost.exe|Svc=WebThreatDefSvc|Name=Block inbound traffic to WebThreatDefSvc|" /f>nul 2>&1
+%ra% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "WebThreatDefSvc_Block_Out" /t %sz% /d "v2.0|Action=Block|Dir=Out|App=%%SystemRoot%%\system32\svchost.exe|Svc=WebThreatDefSvc|Name=Block outbound traffic to WebThreatDefSvc|" /f>nul 2>&1
+%ra% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "Windows%df%er-1" /t %sz% /d "v2.0|Action=Allow|Active=TRUE|Dir=Out|Protocol=6|App=%%ProgramFiles%%\%wd%\MsMpEng.exe|Svc=Win%df%|Name=Allow Out TCP traffic from Win%df%|" /f>nul 2>&1
+%ra% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "Windows%df%er-2" /t %sz% /d "v2.0|Action=Block|Active=TRUE|Dir=In|App=%%ProgramFiles%%\%wd%\MsMpEng.exe|Svc=Win%df%|Name=Block All In traffic to Win%df%|" /f>nul 2>&1
+%ra% "HKLM%scs%\SharedAccess\Parameters\FirewallPolicy\RestrictedServices\Static\System" /v "Windows%df%er-3" /t %sz% /d "v2.0|Action=Block|Active=TRUE|Dir=Out|App=%%ProgramFiles%%\%wd%\MsMpEng.exe|Svc=Win%df%|Name=Block All Out traffic from Win%df%|" /f>nul 2>&1
+%rq% "HKLM%scs%\MDCoreSvc">nul 2>&1&&%ra% "HKLM%scs%\MDCoreSvc" /v "Start" /t %dw% /d 2 /f>nul 2>&1
+%rq% "HKLM%scs%\MsSecCore">nul 2>&1&&%ra% "HKLM%scs%\MsSecCore" /v "Start" /t %dw% /d 0 /f>nul 2>&1
+%rq% "HKLM%scs%\MsSecFlt">nul 2>&1&&%ra% "HKLM%scs%\MsSecFlt" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\MsSecWfp">nul 2>&1&&%ra% "HKLM%scs%\MsSecWfp" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\SecurityHealthService">nul 2>&1&&%ra% "HKLM%scs%\SecurityHealthService" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\Sense">nul 2>&1&&%ra% "HKLM%scs%\Sense" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\SgrmAgent">nul 2>&1&&%ra% "HKLM%scs%\SgrmAgent" /v "Start" /t %dw% /d 0 /f>nul 2>&1
+%rq% "HKLM%scs%\SgrmBroker">nul 2>&1&&%ra% "HKLM%scs%\SgrmBroker" /v "Start" /t %dw% /d 2 /f>nul 2>&1
+%rq% "HKLM%scs%\WdBoot">nul 2>&1&&%ra% "HKLM%scs%\WdBoot" /v "Start" /t %dw% /d 0 /f>nul 2>&1
+%rq% "HKLM%scs%\WdFilter">nul 2>&1&&%ra% "HKLM%scs%\WdFilter" /v "Start" /t %dw% /d 0 /f>nul 2>&1
+%rq% "HKLM%scs%\WdNisDrv">nul 2>&1&&%ra% "HKLM%scs%\WdNisDrv" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\WdNisSvc">nul 2>&1&&%ra% "HKLM%scs%\WdNisSvc" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\webthreatdefsvc">nul 2>&1&&%ra% "HKLM%scs%\webthreatdefsvc" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\webthreatdefusersvc">nul 2>&1&&%ra% "HKLM%scs%\webthreatdefusersvc" /v "Start" /t %dw% /d 2 /f>nul 2>&1
+%rq% "HKLM%scs%\Win%df%">nul 2>&1&&%ra% "HKLM%scs%\Win%df%" /v "Start" /t %dw% /d 2 /f>nul 2>&1
+%rq% "HKLM%scs%\wscsvc">nul 2>&1&&%ra% "HKLM%scs%\wscsvc" /v "Start" /t %dw% /d 2 /f>nul 2>&1
+%rq% "HKLM%scs%\wtd">nul 2>&1&&%ra% "HKLM%scs%\wtd" /v "Start" /t %dw% /d 2 /f>nul 2>&1
 call :UnBlockUWP sechealth
 call :UnBlockUWP chxapp
 if exist "%save%MySecurityDefaults.reg" (
@@ -1250,34 +1310,12 @@ for /d %%f in ("%windir%\SystemApps\*%UWP%*") do (
 :SkipFindUwp
 %ifNdef% UwpName exit /b
 if not exist "%UwpPath%" exit /b
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
-%reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
-for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
-for /f "tokens=*" %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %reg% delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
+%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
+%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do %rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
 %powershell% -ExecutionPolicy Bypass -Command "Reset-AppxPackage -Package %UwpName%">nul 2>&1
-%powershell% -ExecutionPolicy Bypass -Command "Add-AppxPackage -DisableDevelopmentMode -Register %UwpPath%\AppXManifest.xml">nul 2>&1
-exit /b
-
-:SafeBoot
-del /f /q "%pth%boot.cmd">nul 2>&1
-set windefend=
-for /f "tokens=3 delims= " %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" 2^>^&1') do set "userinit=%%a"
-for /f "tokens=3 delims= " %%a in ('%reg% query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" 2^>^&1') do set "usershell=%%a"
-if "%userinit%"=="system"  set "usershell=%windir%\system32\userinit.exe,"
-(%reg% query "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend">nul 2>&1) %then% (set windefend=1)
-%bcdedit% /set {default} safeboot minimal>nul 2>&1||%err% "Error enabling Safe Mode boot" "Ошибка влючения Безопасного режима"
-%reg% add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" /t REG_SZ /d "%userinit%\"%pth%boot.cmd\"" /f>nul 2>&1
-echo chcp 65001>"%pth%boot.cmd"
-echo bcdedit /deletevalue {default} safeboot>>"%pth%boot.cmd"
-echo reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Userinit" /t REG_SZ /d "%userinit%" /f>>"%pth%boot.cmd"
-echo reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "Shell" /t REG_SZ /d "%usershell%" /f>>"%pth%boot.cmd"
-%ifdef% windefend (
-%reg% copy "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend_off" /s /f>nul 2>&1
-%reg% delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" /f>nul 2>&1
-echo reg copy "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend_off" "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend" /s /f>>"%pth%boot.cmd"
-echo reg delete "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\Windefend_off" /f>>"%pth%boot.cmd"
-)
-echo del /f /q "%pth%boot.cmd">>"%pth%boot.cmd"
+%powershell% -ExecutionPolicy Bypass -Command "Add-AppxPackage -%dl%DevelopmentMode -Register %UwpPath%\AppXManifest.xml">nul 2>&1
 exit /b
 
 :WinRE
@@ -1287,7 +1325,7 @@ for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not 
 for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not errorlevel 1 (set winre=1))
 %ifNdef% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутсвует Среда восстановления Windows или её невозвможно включить"&exit /b
 %reagentc% /boottore>nul 2>&1
-manage-bde -protectors c: -disable -rebootcount 1
+manage-bde -protectors c: -%dl% -rebootcount 1
 %msg% "The computer will now reboot intoWindows Recovery Environment" "Компьютер сейчас перезагрузиться в Среду восстановления Windows"
 %shutdown% -r -f -t 5
 %timeout% 4
@@ -1295,11 +1333,11 @@ exit /b
 
 :SAC
 reg load HKLM\sac c:\windows\system32\config\system
-reg add HKLM\sac\controlset001\control\ci\policy /v VerifiedAndReputablePolicyState /t REG_DWORD /d 2 /f 
-reg add HKLM\sac\controlset001\control\ci\protected /v VerifiedAndReputablePolicyStateMinValueSeen /t REG_DWORD /d 2 /f
+reg add HKLM\sac\controlset001\control\ci\policy /v VerifiedAndReputablePolicyState /t %dw% /d 2 /f 
+reg add HKLM\sac\controlset001\control\ci\protected /v VerifiedAndReputablePolicyStateMinValueSeen /t %dw% /d 2 /f
 reg unload HKLM\sac
 reg load HKLM\sac2 C:\windows\system32\config\SOFTWARE
-reg add "HKLM\sac2\Microsoft\Windows Defender" /v SacLearningModeSwitch /t REG_DWORD /d 0 /f
+reg add "HKLM\sac2\Microsoft\%wd%" /v SacLearningModeSwitch /t %dw% /d 0 /f
 reg unload HKLM\sac2
 exit
 
@@ -1315,20 +1353,20 @@ echo.
 %msg% "Policies + Registry Settings" "Политики + Настройки реестра"
 echo.
 %msg% "Semi-legally. Almost complete." "Полулегально. Почти полноценно."
-%msg% "In addition to policies, known tweaks are applied to disable various protection aspects" "В дополнение к политикам применяются известные твики отключающие различные аспекты защит"
+%msg% "In addition to policies, known tweaks are applied to %dl% various protection aspects" "В дополнение к политикам применяются известные твики отключающие различные аспекты защит"
 %msg% "Only drivers and services are active in the background, performing no actions" "Только драйверы и службы активны в фоне, не выполняют никаких действий"
 echo.
 %msg% "Policies + Settings + Disabling Services and drivers" "Политики + Настройки + Отключение служб и драйверов"
 echo.
 %msg% "Illegally. Complete." "Нелегально. Полноценно."
-%msg% "Also disables the startup of all related services and drivers" "Также отключается запуск всех сопутствующих служб и драйверов"
+%msg% "Also %dl%s the startup of all related services and drivers" "Также отключается запуск всех сопутствующих служб и драйверов"
 %msg% "No background activities" "Никаких фоновых активностей"
 echo.
 %msg% "Policies + Settings + Disabling Services and drivers + Block launch executables" "Политики + Настройки + Отключение служб и драйверов + Блокировка запуска"
 echo.
 %msg% "Hacker-style. Excessive." "По-хакерски. Избыточно."
 %msg% "Blocks the launch of known protection processes by assigning an incorrect debugger in the registry" "Блокируется запуск известных процессов защит с помощью назначения неправильного дебагера в реестре"
-%msg% "Helps reduce the risk of enabling the defender during a Windows update" "Помогает снизить риск включения защитника при обновлении Windows"
+%msg% "Helps reduce the risk of enabling the %df%er during a Windows update" "Помогает снизить риск включения защитника при обновлении Windows"
 echo.
 pause
 exit /b
