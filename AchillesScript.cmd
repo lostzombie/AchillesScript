@@ -71,7 +71,7 @@ set "regback=%SystemRoot%\System32\config\RegBack"
 ::
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
 if not exist "%powershell%" %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
-call :CheckTrusted||(%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/c', '%ScriptPS% %args%' -Verb RunAs&exit)
+call :CheckTrusted||%bcdedit% >nul 2>&1||(%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/c', '%ScriptPS% %args%' -Verb RunAs&exit)
 echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write error in %pth%test.ps1" "Ошибка тестовой записи в %pth%test.ps1")
 echo test>>"%pth%test.cmd"&&del /f /q "%pth%test.cmd"||(%err% "Testing write error in %pth%test.cmd" "Ошибка тестовой записи в %pth%test.cmd")
 set REBOOT_PENDING=
