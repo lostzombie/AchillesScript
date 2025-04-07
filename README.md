@@ -3,7 +3,7 @@
 <img src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
 
 # Achilles' Script
-&emsp;Disabling Windows Defender ⚡ Отключение Защитника Windows
+Disable Windows Defender and Security
 
 **WIN+R**
 ```
