@@ -12,10 +12,6 @@ cmd /c curl -L -o %tmp%\a.cmd bit.ly/defoff&&%tmp%\a.cmd
 
 ![English](https://img.shields.io/badge/Language-En-blue)&emsp;&emsp;![Russian](https://img.shields.io/badge/Language-Ru-blue)
 
-IMPORTANT. If you are using a Microsoft account, you may have a broken login to your account in safe mode. If you have not booted into safe mode and do not know if this is possible, do not use this script.
-
-ВАЖНО. Если вы используете аккаунт Microsoft, у вас может быть поломан вход в учётную запись в безопасном режиме. Если вы не загружались в безопасный режим и не знаете возможно ли это не используйте данный скрипт.
-
 ## 💻Terminal User Interface
   
 <img src="Media/tui_en.png" alt="Achilles' Script TUI En" width='400'> <img src="Media/tui_ru.png" alt="Achilles' Script TUI Ru" width='400'>
