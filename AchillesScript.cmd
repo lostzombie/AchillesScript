@@ -1,11 +1,21 @@
 ::https://github.com/lostzombie/AchillesScript
 @echo off
-cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.5.1"
-set AS=Achilles
+::#############################################################################
 ::set nobackup=1
+::#############################################################################
+cls&chcp 65001>nul 2>&1&color 0F
+set "asv=ver 1.5.2"
+set AS=Achilles
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
-if "%sysdir%"=="X:\windows\system32" set "sysdir=C:\windows\system32"
+if "%sysdir%"=="X:\windows\system32" set "sys="
+for %%i in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
+    if exist "%%i:\Windows\System32" (
+        set "sys=%%i"
+        goto :SysFound
+    )
+)
+:SysFound
+set "sysdir=%sys%:\windows\system32"
 set "cmd=%sysdir%\cmd.exe"
 set "reg=%sysdir%\reg.exe"
 set "ra=%reg% add"
@@ -29,8 +39,9 @@ set ScriptPS=\"%~dpnx0\"
 set "pth=%~dp0"
 set "save=%pth%"
 if not "%pth%"=="%tmp%\" goto :SkipDesktop
-for /f "tokens=1,2,*" %%b in ('%rq% "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop" 2^>nul') do set "save=%%D\"
+for /f "tokens=2*" %%a in ('%rq% "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop"') do set "save=%%b\"
 for /f "tokens=*" %%a in ('echo %save%') do @set save=%%a
+if not exist "%save%" set "save=%USERPROFILE%\Desktop"
 :SkipDesktop
 set "arg1=%~1"
 set "arg2=%~2"
@@ -64,19 +75,20 @@ set "sccd=%scc%\DeviceGuard"
 set "scs=\SYSTEM\CurrentControlSet\Services"
 set "scl=\SOFTWARE\Classes"
 set "uwpsearch=HKLM%scl%\Local Settings%smw%\%cv%\AppModel\PackageRepository\Packages"
-set "regback=%SystemRoot%\System32\config\RegBack"
+set "regback=%save%RegistryBackup"
 ::
 (%rq% "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%rq% "HKLM%scc%\Nls\Language" /v Default|find "0x409">nul 2>&1) %then% (set Lang=%L%))
 %ifNdef% Lang (title %AS%' Script) else (title Ахилесов Скрипт)
 ::
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
 if not exist "%powershell%" %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
-call :CheckTrusted||%bcdedit% >nul 2>&1||(%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -ExecutionPolicy Bypass -Command Start-Process %cmd% -ArgumentList '/c', '%ScriptPS% %args%' -Verb RunAs&exit)
+call :CheckTrusted||%bcdedit% >nul 2>&1||(%ifdef% AdminRestart %err% "Error - bcdedit is broken" "Ошибка - bcdedit поломан")
+call :CheckTrusted||%bcdedit% >nul 2>&1||(set AdminRestart=1&%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c Start-Process %cmd% -ArgumentList '/c', '%ScriptPS% %args%' -Verb RunAs&exit)
 echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write error in %pth%test.ps1" "Ошибка тестовой записи в %pth%test.ps1")
 echo test>>"%pth%test.cmd"&&del /f /q "%pth%test.cmd"||(%err% "Testing write error in %pth%test.cmd" "Ошибка тестовой записи в %pth%test.cmd")
 set REBOOT_PENDING=
-%rq% "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired" > nul 2>&1 && set REBOOT_PENDING=1
-%rq% "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending" > nul 2>&1 && set REBOOT_PENDING=1
+%rq% "HKLM%smw%\%cv%\WindowsUpdate\Auto Update\RebootRequired" > nul 2>&1 && set REBOOT_PENDING=1
+%rq% "HKLM%smw%\%cv%\Component Based Servicing\RebootPending" > nul 2>&1 && set REBOOT_PENDING=1
 %ifNdef% arg1 %ifdef% REBOOT_PENDING %err% "Scheduled actions during reboot, reboot before using the script" "Запланированы действия во время перезагрузки, перед использованием скрипта перезагрузитесь"
 %ifdef% arg1 %ifdef% REBOOT_PENDING %errn% "Scheduled actions during reboot, reboot before using the script" "Запланированы действия во время перезагрузки, перед использованием скрипта перезагрузитесь"
 ::Args
@@ -138,7 +150,7 @@ for /f "tokens=1 delims=." %%v in ('echo  %win%') do set /a "win=%%v"
 for /f "tokens=4" %%a in ('ver') do set "WindowsBuild=%%a"
 set "WindowsBuild=%WindowsBuild:~5,-1%"
 if [%win%] lss [10] %ifdef% Lang (echo Этот скрипт разработан для Windows 10 и новее)&echo.&pause&exit else (echo This Script is designed for Windows 10 and newer)&echo.&pause&exit
-for /f "tokens=3,*" %%a in ('%rq% "HKLM%smw% NT\%cv%" /v ProductName') do set "WindowsVersion=%%a %%b"
+for /f "tokens=2*" %%a in ('%rq% "HKLM%smw% NT\%cv%" /v ProductName') do set "WindowsVersion=%%b"
 if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
 ::#############################################################################
 :BEGIN
@@ -250,16 +262,15 @@ set "BootArgs=%args%"
 %tk% /im mmc.exe /t /f>nul 2>&1
 %sc% delete %AS%Service>nul 2>&1
 %sc% create %AS%Service type= own start= auto error= ignore obj= "LocalSystem" binPath= "cmd.exe /c start \"\" \"%pth%%AS%Boot.cmd\"">nul 2>&1
-%ra% "HKLM%scs%\%AS%Service" /v "Start" /t %dw% /d 2 /f>nul 2>&1
 set "EventLog="
-for /f "tokens=1,2,*" %%b in ('%rq% "HKLM%scc%\WMI\Autologger\EventLog-System\{555908d1-a6d7-4695-8e1e-26931d2012f4}" /v "Enabled" 2^>nul') do set "EventLog=%%d"
+for /f "tokens=2*" %%a in ('%rq% "HKLM%scc%\WMI\Autologger\EventLog-System\{555908d1-a6d7-4695-8e1e-26931d2012f4}" /v "Enabled" 2^>nul') do set "EventLog=%%b"
 if [%EventLog%]==[0x1] %ra% "HKLM%scc%\WMI\Autologger\EventLog-System\{555908d1-a6d7-4695-8e1e-26931d2012f4}" /v Enabled /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%scc%\SafeBoot\Minimal\%AS%Service" /ve /t REG_SZ /d "Service" /f>nul 2>&1
-%ifNdef% only %ra% "HKLM%smw%\%cv%\RunOnce" /v "*Wait" /t %sz% /d "cmd.exe /k title WAIT&echo WAIT..." /f >nul 2>&1
+%ifNdef% only %ra% "HKLM%smw%\%cv%\RunOnce" /v "*Wait" /t %sz% /d "cmd.exe /k title WAIT&echo WAIT...&if exist \"%pth%%AS%Boot.cmd\" (call \"%pth%%AS%Boot.cmd\"&exit)" /f >nul 2>&1
 call :SafeBoot %only%
 %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
-%shutdown% -r -f -t 2
-%timeout% 2
+%shutdown% /r /f /t 2 -c "Reboot Safe Mode" 
+%timeout% 3
 exit
 
 :SafeBoot
@@ -272,7 +283,7 @@ set displaybootmenu=
 for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "timeout"') do set "timeout=%%t"
 for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "displaybootmenu"') do set "displaybootmenu=%%t"
 for /f "tokens=2" %%t in ('%bcdedit% /v ^| find "default"') do set "default=%%t"
-for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {current} /d "%AS%TempBoot" ^| find "{"') do set guid=%%a
+for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {current} /d "Safe Mode" ^| find "{"') do set guid=%%a
 %bcdedit% /timeout "2" >nul 2>&1
 %bcdedit% /set {bootmgr} displaybootmenu Yes>nul 2>&1
 %bcdedit% /set {%guid%} safeboot minimal>nul 2>&1
@@ -293,44 +304,44 @@ echo reg delete "HKLM%scc%\SafeBoot\Minimal\%AS%Service" /f>>"%pth%%AS%Boot.cmd"
 	echo reg copy "HKLM%scc%\SafeBoot\Minimal\Win%df%_off" "HKLM%scc%\SafeBoot\Minimal\Win%df%" /s /f>>"%pth%%AS%Boot.cmd"
 	echo reg delete "HKLM%scc%\SafeBoot\Minimal\Win%df%_off" /f>>"%pth%%AS%Boot.cmd"
 )
-%ifNdef% only echo start ^"^" ^"%Script%^" %BootArgs% >>"%pth%%AS%Boot.cmd"
 if [%EventLog%]==[0x1] echo reg add "HKLM%scc%\WMI\Autologger\EventLog-System\{555908d1-a6d7-4695-8e1e-26931d2012f4}" /v Enabled /t %dw% /d 1 /f >>"%pth%%AS%Boot.cmd"
+%ifNdef% only echo if defined SAFEBOOT_OPTION start ^"^" ^"%Script%^" %BootArgs% >>"%pth%%AS%Boot.cmd"
 echo del /f /q ^"%pth%%AS%Boot.cmd^" >>"%pth%%AS%Boot.cmd"
 exit /b
 
 :Reboot2Normal
 %msg% "The computer will now reboot into default mode." "Компьютер сейчас перезагрузиться в обычный режим."
 %rd% "HKLM%smw%\%cv%\RunOnce" /v "*Wait" /f >nul 2>&1
-%ifdef% SAFEBOOT_OPTION %shutdown% -r -f -t 0
-%ifNdef% SAFEBOOT_OPTION %shutdown% -r -f -t 5&%timeout% 5
+%ifdef% SAFEBOOT_OPTION %shutdown% /r /f /t 0
+%ifNdef% SAFEBOOT_OPTION %shutdown% /r /f /t 3 /c "Reboot"&%timeout% 3
 exit
 
 :TrustedRun
 %msg% "Getting Trusted Installer privileges..." "Получение привилегий Trusted Installer..."
 %sc% config "TrustedInstaller" start= demand>nul 2>&1
 %sc% start "TrustedInstaller">nul 2>&1
-del /f /q "%pth%ti.ps1">nul 2>&1
+del /f /q "%pth%%AS%TI.ps1">nul 2>&1
 set "RunAsTrustedInstaller=%~1"
-echo $AppFullPath=[System.Environment]::GetEnvironmentVariable('RunAsTrustedInstaller')>>"%pth%ti.ps1"
-echo [string]$GetTokenAPI=@'>>"%pth%ti.ps1"
-echo using System;using System.ServiceProcess;using System.Diagnostics;using System.Runtime.InteropServices;using System.Security.Principal;namespace WinAPI{internal static class WinBase{[StructLayout(LayoutKind.Sequential)]internal struct SECURITY_ATTRIBUTES{public int nLength;public IntPtr lpSecurityDeScriptor;public bool bInheritHandle;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct STARTUPINFO{public Int32 cb;public string lpReserved;public string lpDesktop;public string lpTitle;public uint dwX;public uint dwY;public uint dwXSize;public uint dwYSize;public uint dwXCountChars;public uint dwYCountChars;public uint dwFillAttribute;public uint dwFlags;public Int16 wShowWindow;public Int16 cbReserved2;public IntPtr lpReserved2;public IntPtr hStdInput;public IntPtr hStdOutput;public IntPtr hStdError;}[StructLayout(LayoutKind.Sequential)]internal struct PROCESS_INFORMATION{public IntPtr hProcess;public IntPtr hThread;public uint dwProcessId;public uint dwThreadId;}}internal static class WinNT{public enum TOKEN_TYPE{TokenPrimary=1,TokenImpersonation}public enum SECURITY_IMPERSONATION_LEVEL{SecurityAnonymous,SecurityIdentification,SecurityImpersonation,SecurityDelegation}[StructLayout(LayoutKind.Sequential,Pack=1)]internal struct TokPriv1Luid{public uint PrivilegeCount;public long Luid;public UInt32 Attributes;}}internal static class Advapi32{public const int SE_PRIVILEGE_ENABLED=0x00000002;public const uint CREATE_NO_WINDOW=0x08000000;public const uint CREATE_NEW_CONSOLE=0x00000010;public const uint CREATE_UNICODE_ENVIRONMENT=0x00000400;public const UInt32 STANDARD_RIGHTS_REQUIRED=0x000F0000;public const UInt32 STANDARD_RIGHTS_READ=0x00020000;public const UInt32 TOKEN_ASSIGN_PRIMARY=0x0001;public const UInt32 TOKEN_DUPLICATE=0x0002;public const UInt32 TOKEN_IMPERSONATE=0x0004;public const UInt32 TOKEN_QUERY=0x0008;public const UInt32 TOKEN_QUERY_SOURCE=0x0010;public const UInt32 TOKEN_ADJUST_PRIVILEGES=0x0020;public const UInt32 TOKEN_ADJUST_GROUPS=0x0040;public const UInt32 TOKEN_ADJUST_DEFAULT=0x0080;public const UInt32 TOKEN_ADJUST_SESSIONID=0x0100;public const UInt32 TOKEN_READ=(STANDARD_RIGHTS_READ^|TOKEN_QUERY);public const UInt32 TOKEN_ALL_ACCESS=(STANDARD_RIGHTS_REQUIRED^|TOKEN_ASSIGN_PRIMARY^|TOKEN_DUPLICATE^|TOKEN_IMPERSONATE^|TOKEN_QUERY^|TOKEN_QUERY_SOURCE^|TOKEN_ADJUST_PRIVILEGES^|TOKEN_ADJUST_GROUPS^|TOKEN_ADJUST_DEFAULT^|TOKEN_ADJUST_SESSIONID);[DllImport("advapi32.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]public static extern bool OpenProcessToken(IntPtr ProcessHandle,UInt32 DesiredAccess,out IntPtr TokenHandle);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public extern static bool DuplicateTokenEx(IntPtr hExistingToken,uint dwDesiredAccess,IntPtr lpTokenAttributes,WinNT.SECURITY_IMPERSONATION_LEVEL ImpersonationLevel,WinNT.TOKEN_TYPE TokenType,out IntPtr phNewToken);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]internal static extern bool LookupPrivilegeValue(string lpSystemName,string lpName,ref long lpLuid);[DllImport("advapi32.dll",SetLastError=true)]internal static extern bool AdjustTokenPrivileges(IntPtr TokenHandle,bool %dl%AllPrivileges,ref WinNT.TokPriv1Luid NewState,UInt32 Zero,IntPtr Null1,IntPtr Null2);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessAsUserW(IntPtr hToken,string lpApplicationName,string lpCommandLine,IntPtr lpProcessAttributes,IntPtr lpThreadAttributes,bool bInheritHandles,uint dwCreationFlags,IntPtr lpEnvironment,string lpCurrentDirectory,ref WinBase.STARTUPINFO lpStartupInfo,out WinBase.PROCESS_INFORMATION lpProcessInformation);[DllImport("advapi32.dll",SetLastError=true)]public static extern bool SetTokenInformation(IntPtr TokenHandle,uint TokenInformationClass,ref IntPtr TokenInformation,int TokenInformationLength);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public static extern bool RevertToSelf();}internal static class Kernel32{[Flags]public enum ProcessAccessFlags:uint{All=0x001F0FFF}[DllImport("kernel32.dll",SetLastError=true)]>>"%pth%ti.ps1"
-echo public static extern IntPtr OpenProcess(ProcessAccessFlags processAccess,bool bInheritHandle,int processId);[DllImport("kernel32.dll",SetLastError=true)]public static extern bool CloseHandle(IntPtr hObject);}internal static class Userenv{[DllImport("userenv.dll",SetLastError=true)]public static extern bool CreateEnvironmentBlock(ref IntPtr lpEnvironment,IntPtr hToken,bool bInherit);}public static class ProcessConfig{public static IntPtr DuplicateTokenSYS(IntPtr hTokenSys){IntPtr hProcess=IntPtr.Zero,hToken=IntPtr.Zero,hTokenDup=IntPtr.Zero;int pid=0;string name;bool bSuccess,impersonate=false;try{if(hTokenSys==IntPtr.Zero){bSuccess=RevertToRealSelf();name=System.Text.Encoding.UTF8.GetString(new byte[]{87,73,78,76,79,71,79,78});}else{name=System.Text.Encoding.UTF8.GetString(new byte[]{84,82,85,83,84,69,68,73,78,83,84,65,76,76,69,82});ServiceController controlTI=new ServiceController(name);if(controlTI.Status==ServiceControllerStatus.Stopped){controlTI.Start();System.Threading.Thread.Sleep(5);controlTI.Close();}impersonate=ImpersonateWithToken(hTokenSys);if(!impersonate){return IntPtr.Zero;}}IntPtr curSessionId=new IntPtr(Process.GetCurrentProcess().SessionId);Process process=Array.Find(Process.GetProcessesByName(name),p=^>p.Id^>0);if(process!=null){pid=process.Id;}else{return IntPtr.Zero;}hProcess=Kernel32.OpenProcess(Kernel32.ProcessAccessFlags.All,true,pid);uint DesiredAccess=Advapi32.TOKEN_QUERY^|Advapi32.TOKEN_DUPLICATE^|Advapi32.TOKEN_ASSIGN_PRIMARY;bSuccess=Advapi32.OpenProcessToken(hProcess,DesiredAccess,out hToken);if(!bSuccess){return IntPtr.Zero;}DesiredAccess=Advapi32.TOKEN_ALL_ACCESS;bSuccess=Advapi32.DuplicateTokenEx(hToken,DesiredAccess,IntPtr.Zero,WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityDelegation,WinNT.TOKEN_TYPE.TokenPrimary,out hTokenDup);if(!bSuccess){bSuccess=Advapi32.DuplicateTokenEx(hToken,DesiredAccess,IntPtr.Zero,WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,WinNT.TOKEN_TYPE.TokenPrimary,out hTokenDup);}if(bSuccess){bSuccess=EnableAllPrivilages(hTokenDup);}if(!impersonate){hTokenSys=hTokenDup;impersonate=ImpersonateWithToken(hTokenSys);}if(impersonate){bSuccess=Advapi32.SetTokenInformation(hTokenDup,12,ref curSessionId,4);}}catch(Exception){}finally{if(hProcess!=IntPtr.Zero){Kernel32.CloseHandle(hProcess);}if(hToken!=IntPtr.Zero){Kernel32.CloseHandle(hToken);}bSuccess=RevertToRealSelf();}if(hTokenDup!=IntPtr.Zero){return hTokenDup;}else{return IntPtr.Zero;}}public static bool RevertToRealSelf(){try{Advapi32.RevertToSelf();WindowsImpersonationContext currentImpersonate=WindowsIdentity.GetCurrent().Impersonate();currentImpersonate.Undo();currentImpersonate.Dispose();}catch(Exception){return false;}return true;}public static bool ImpersonateWithToken(IntPtr hTokenSys){try{WindowsImpersonationContext ImpersonateSys=new WindowsIdentity(hTokenSys).Impersonate();}catch(Exception){return false;}return true;}private enum PrivilegeNames{SeAssignPrimaryTokenPrivilege,SeBackupPrivilege,SeIncreaseQuotaPrivilege,SeLoadDriverPrivilege,SeManageVolumePrivilege,SeRestorePrivilege,SeSecurityPrivilege,SeShutdownPrivilege,SeSystemEnvironmentPrivilege,SeSystemTimePrivilege,SeTakeOwnershipPrivilege,SeTrustedCredmanAccessPrivilege,SeUndockPrivilege};private static bool EnableAllPrivilages(IntPtr hTokenSys){WinNT.TokPriv1Luid tp;tp.PrivilegeCount=1;tp.Luid=0;tp.Attributes=Advapi32.SE_PRIVILEGE_ENABLED;bool bSuccess=false;try{foreach(string privilege in Enum.GetNames(typeof(PrivilegeNames))){bSuccess=Advapi32.LookupPrivilegeValue(null,privilege,ref tp.Luid);bSuccess=Advapi32.AdjustTokenPrivileges(hTokenSys,false,ref tp,0,IntPtr.Zero,IntPtr.Zero);}}catch(Exception){return false;}return bSuccess;}public static StructOut CreateProcessWithTokenSys(IntPtr hTokenSys,string AppPath){uint exitCode=0;bool bSuccess;bool bInherit=false;string stdOutString="";IntPtr hReadOut=IntPtr.Zero,hWriteOut=IntPtr.Zero;const uint HANDLE_FLAG_INHERIT=0x00000001;const uint STARTF_USESTDHANDLES=0x00000100;const UInt32 INFINITE=0xFFFFFFFF;IntPtr NewEnvironment=IntPtr.Zero;bSuccess=Userenv.CreateEnvironmentBlock(ref NewEnvironment,hTokenSys,true);uint CreationFlags=Advapi32.CREATE_UNICODE_ENVIRONMENT^|Advapi32.CREATE_NEW_CONSOLE;WinBase.PROCESS_INFORMATION pi=new WinBase.PROCESS_INFORMATION();WinBase.STARTUPINFO si=new WinBase.STARTUPINFO();si.cb=Marshal.SizeOf(si);si.lpDesktop="winsta0\\default";try{bSuccess=ImpersonateWithToken(hTokenSys);bSuccess=Advapi32.CreateProcessAsUserW(hTokenSys,null,AppPath,IntPtr.Zero,IntPtr.Zero,bInherit,(uint)CreationFlags,NewEnvironment,null,ref si,out pi);if(!bSuccess){exitCode=1;}}catch(Exception){}finally{if(pi.hProcess!=IntPtr.Zero){Kernel32.CloseHandle(pi.hProcess);}if(pi.hThread!=IntPtr.Zero){Kernel32.CloseHandle(pi.hThread);}bSuccess=RevertToRealSelf();}StructOut so=new StructOut();so.ProcessId=pi.dwProcessId;so.ExitCode=exitCode;so.StdOut=stdOutString;return so;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]public struct StructOut{public uint ProcessId;public uint ExitCode;public string StdOut;}}}>>"%pth%ti.ps1"
-echo '@>>"%pth%ti.ps1"
-echo if (-not ('WinAPI.ProcessConfig' -as [type] )){$cp=[System.CodeDom.Compiler.CompilerParameters]::new(@('System.dll','System.ServiceProcess.dll'))>>"%pth%ti.ps1"
-echo $cp.TempFiles=[System.CodeDom.Compiler.TempFileCollection]::new($DismScratchDirGlobal,$false)>>"%pth%ti.ps1"
-echo $cp.GenerateInMemory=$true>>"%pth%ti.ps1"
-echo $cp.CompilerOptions='/platform:anycpu /nologo'>>"%pth%ti.ps1"
-echo Add-Type -TypeDefinition $GetTokenAPI -Language CSharp -ErrorAction Stop -CompilerParameters $cp}>>"%pth%ti.ps1"
-echo $Global:Token_SYS=[WinAPI.ProcessConfig]::DuplicateTokenSYS([System.IntPtr]::Zero)>>"%pth%ti.ps1"
-echo if ($Global:Token_SYS -eq [IntPtr]::Zero ){$Exit=$true; Return}>>"%pth%ti.ps1"
-echo $Global:Token_TI=[WinAPI.ProcessConfig]::DuplicateTokenSYS($Global:Token_SYS)>>"%pth%ti.ps1"
-echo if ($Global:Token_TI -eq [IntPtr]::Zero ){$Exit=$true; Return}>>"%pth%ti.ps1"
-echo [WinAPI.ProcessConfig+StructOut] $StructOut=New-Object -TypeName WinAPI.ProcessConfig+StructOut>>"%pth%ti.ps1"
-echo $StructOut=[WinAPI.ProcessConfig]::CreateProcessWithTokenSys($Global:Token_TI, $AppFullPath)>>"%pth%ti.ps1"
-echo return $StructOut.ExitCode>>"%pth%ti.ps1"
-%powershell% -ExecutionPolicy Bypass -File "%pth%ti.ps1">nul 2>&1
+echo $AppFullPath=[System.Environment]::GetEnvironmentVariable('RunAsTrustedInstaller')>>"%pth%%AS%TI.ps1"
+echo [string]$GetTokenAPI=@'>>"%pth%%AS%TI.ps1"
+echo using System;using System.ServiceProcess;using System.Diagnostics;using System.Runtime.InteropServices;using System.Security.Principal;namespace WinAPI{internal static class WinBase{[StructLayout(LayoutKind.Sequential)]internal struct SECURITY_ATTRIBUTES{public int nLength;public IntPtr lpSecurityDeScriptor;public bool bInheritHandle;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct STARTUPINFO{public Int32 cb;public string lpReserved;public string lpDesktop;public string lpTitle;public uint dwX;public uint dwY;public uint dwXSize;public uint dwYSize;public uint dwXCountChars;public uint dwYCountChars;public uint dwFillAttribute;public uint dwFlags;public Int16 wShowWindow;public Int16 cbReserved2;public IntPtr lpReserved2;public IntPtr hStdInput;public IntPtr hStdOutput;public IntPtr hStdError;}[StructLayout(LayoutKind.Sequential)]internal struct PROCESS_INFORMATION{public IntPtr hProcess;public IntPtr hThread;public uint dwProcessId;public uint dwThreadId;}}internal static class WinNT{public enum TOKEN_TYPE{TokenPrimary=1,TokenImpersonation}public enum SECURITY_IMPERSONATION_LEVEL{SecurityAnonymous,SecurityIdentification,SecurityImpersonation,SecurityDelegation}[StructLayout(LayoutKind.Sequential,Pack=1)]internal struct TokPriv1Luid{public uint PrivilegeCount;public long Luid;public UInt32 Attributes;}}internal static class Advapi32{public const int SE_PRIVILEGE_ENABLED=0x00000002;public const uint CREATE_NO_WINDOW=0x08000000;public const uint CREATE_NEW_CONSOLE=0x00000010;public const uint CREATE_UNICODE_ENVIRONMENT=0x00000400;public const UInt32 STANDARD_RIGHTS_REQUIRED=0x000F0000;public const UInt32 STANDARD_RIGHTS_READ=0x00020000;public const UInt32 TOKEN_ASSIGN_PRIMARY=0x0001;public const UInt32 TOKEN_DUPLICATE=0x0002;public const UInt32 TOKEN_IMPERSONATE=0x0004;public const UInt32 TOKEN_QUERY=0x0008;public const UInt32 TOKEN_QUERY_SOURCE=0x0010;public const UInt32 TOKEN_ADJUST_PRIVILEGES=0x0020;public const UInt32 TOKEN_ADJUST_GROUPS=0x0040;public const UInt32 TOKEN_ADJUST_DEFAULT=0x0080;public const UInt32 TOKEN_ADJUST_SESSIONID=0x0100;public const UInt32 TOKEN_READ=(STANDARD_RIGHTS_READ^|TOKEN_QUERY);public const UInt32 TOKEN_ALL_ACCESS=(STANDARD_RIGHTS_REQUIRED^|TOKEN_ASSIGN_PRIMARY^|TOKEN_DUPLICATE^|TOKEN_IMPERSONATE^|TOKEN_QUERY^|TOKEN_QUERY_SOURCE^|TOKEN_ADJUST_PRIVILEGES^|TOKEN_ADJUST_GROUPS^|TOKEN_ADJUST_DEFAULT^|TOKEN_ADJUST_SESSIONID);[DllImport("advapi32.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]public static extern bool OpenProcessToken(IntPtr ProcessHandle,UInt32 DesiredAccess,out IntPtr TokenHandle);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public extern static bool DuplicateTokenEx(IntPtr hExistingToken,uint dwDesiredAccess,IntPtr lpTokenAttributes,WinNT.SECURITY_IMPERSONATION_LEVEL ImpersonationLevel,WinNT.TOKEN_TYPE TokenType,out IntPtr phNewToken);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]internal static extern bool LookupPrivilegeValue(string lpSystemName,string lpName,ref long lpLuid);[DllImport("advapi32.dll",SetLastError=true)]internal static extern bool AdjustTokenPrivileges(IntPtr TokenHandle,bool %dl%AllPrivileges,ref WinNT.TokPriv1Luid NewState,UInt32 Zero,IntPtr Null1,IntPtr Null2);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessAsUserW(IntPtr hToken,string lpApplicationName,string lpCommandLine,IntPtr lpProcessAttributes,IntPtr lpThreadAttributes,bool bInheritHandles,uint dwCreationFlags,IntPtr lpEnvironment,string lpCurrentDirectory,ref WinBase.STARTUPINFO lpStartupInfo,out WinBase.PROCESS_INFORMATION lpProcessInformation);[DllImport("advapi32.dll",SetLastError=true)]public static extern bool SetTokenInformation(IntPtr TokenHandle,uint TokenInformationClass,ref IntPtr TokenInformation,int TokenInformationLength);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public static extern bool RevertToSelf();}internal static class Kernel32{[Flags]public enum ProcessAccessFlags:uint{All=0x001F0FFF}[DllImport("kernel32.dll",SetLastError=true)]>>"%pth%%AS%TI.ps1"
+echo public static extern IntPtr OpenProcess(ProcessAccessFlags processAccess,bool bInheritHandle,int processId);[DllImport("kernel32.dll",SetLastError=true)]public static extern bool CloseHandle(IntPtr hObject);}internal static class Userenv{[DllImport("userenv.dll",SetLastError=true)]public static extern bool CreateEnvironmentBlock(ref IntPtr lpEnvironment,IntPtr hToken,bool bInherit);}public static class ProcessConfig{public static IntPtr DuplicateTokenSYS(IntPtr hTokenSys){IntPtr hProcess=IntPtr.Zero,hToken=IntPtr.Zero,hTokenDup=IntPtr.Zero;int pid=0;string name;bool bSuccess,impersonate=false;try{if(hTokenSys==IntPtr.Zero){bSuccess=RevertToRealSelf();name=System.Text.Encoding.UTF8.GetString(new byte[]{87,73,78,76,79,71,79,78});}else{name=System.Text.Encoding.UTF8.GetString(new byte[]{84,82,85,83,84,69,68,73,78,83,84,65,76,76,69,82});ServiceController controlTI=new ServiceController(name);if(controlTI.Status==ServiceControllerStatus.Stopped){controlTI.Start();System.Threading.Thread.Sleep(5);controlTI.Close();}impersonate=ImpersonateWithToken(hTokenSys);if(!impersonate){return IntPtr.Zero;}}IntPtr curSessionId=new IntPtr(Process.GetCurrentProcess().SessionId);Process process=Array.Find(Process.GetProcessesByName(name),p=^>p.Id^>0);if(process!=null){pid=process.Id;}else{return IntPtr.Zero;}hProcess=Kernel32.OpenProcess(Kernel32.ProcessAccessFlags.All,true,pid);uint DesiredAccess=Advapi32.TOKEN_QUERY^|Advapi32.TOKEN_DUPLICATE^|Advapi32.TOKEN_ASSIGN_PRIMARY;bSuccess=Advapi32.OpenProcessToken(hProcess,DesiredAccess,out hToken);if(!bSuccess){return IntPtr.Zero;}DesiredAccess=Advapi32.TOKEN_ALL_ACCESS;bSuccess=Advapi32.DuplicateTokenEx(hToken,DesiredAccess,IntPtr.Zero,WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityDelegation,WinNT.TOKEN_TYPE.TokenPrimary,out hTokenDup);if(!bSuccess){bSuccess=Advapi32.DuplicateTokenEx(hToken,DesiredAccess,IntPtr.Zero,WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,WinNT.TOKEN_TYPE.TokenPrimary,out hTokenDup);}if(bSuccess){bSuccess=EnableAllPrivilages(hTokenDup);}if(!impersonate){hTokenSys=hTokenDup;impersonate=ImpersonateWithToken(hTokenSys);}if(impersonate){bSuccess=Advapi32.SetTokenInformation(hTokenDup,12,ref curSessionId,4);}}catch(Exception){}finally{if(hProcess!=IntPtr.Zero){Kernel32.CloseHandle(hProcess);}if(hToken!=IntPtr.Zero){Kernel32.CloseHandle(hToken);}bSuccess=RevertToRealSelf();}if(hTokenDup!=IntPtr.Zero){return hTokenDup;}else{return IntPtr.Zero;}}public static bool RevertToRealSelf(){try{Advapi32.RevertToSelf();WindowsImpersonationContext currentImpersonate=WindowsIdentity.GetCurrent().Impersonate();currentImpersonate.Undo();currentImpersonate.Dispose();}catch(Exception){return false;}return true;}public static bool ImpersonateWithToken(IntPtr hTokenSys){try{WindowsImpersonationContext ImpersonateSys=new WindowsIdentity(hTokenSys).Impersonate();}catch(Exception){return false;}return true;}private enum PrivilegeNames{SeAssignPrimaryTokenPrivilege,SeBackupPrivilege,SeIncreaseQuotaPrivilege,SeLoadDriverPrivilege,SeManageVolumePrivilege,SeRestorePrivilege,SeSecurityPrivilege,SeShutdownPrivilege,SeSystemEnvironmentPrivilege,SeSystemTimePrivilege,SeTakeOwnershipPrivilege,SeTrustedCredmanAccessPrivilege,SeUndockPrivilege};private static bool EnableAllPrivilages(IntPtr hTokenSys){WinNT.TokPriv1Luid tp;tp.PrivilegeCount=1;tp.Luid=0;tp.Attributes=Advapi32.SE_PRIVILEGE_ENABLED;bool bSuccess=false;try{foreach(string privilege in Enum.GetNames(typeof(PrivilegeNames))){bSuccess=Advapi32.LookupPrivilegeValue(null,privilege,ref tp.Luid);bSuccess=Advapi32.AdjustTokenPrivileges(hTokenSys,false,ref tp,0,IntPtr.Zero,IntPtr.Zero);}}catch(Exception){return false;}return bSuccess;}public static StructOut CreateProcessWithTokenSys(IntPtr hTokenSys,string AppPath){uint exitCode=0;bool bSuccess;bool bInherit=false;string stdOutString="";IntPtr hReadOut=IntPtr.Zero,hWriteOut=IntPtr.Zero;const uint HANDLE_FLAG_INHERIT=0x00000001;const uint STARTF_USESTDHANDLES=0x00000100;const UInt32 INFINITE=0xFFFFFFFF;IntPtr NewEnvironment=IntPtr.Zero;bSuccess=Userenv.CreateEnvironmentBlock(ref NewEnvironment,hTokenSys,true);uint CreationFlags=Advapi32.CREATE_UNICODE_ENVIRONMENT^|Advapi32.CREATE_NEW_CONSOLE;WinBase.PROCESS_INFORMATION pi=new WinBase.PROCESS_INFORMATION();WinBase.STARTUPINFO si=new WinBase.STARTUPINFO();si.cb=Marshal.SizeOf(si);si.lpDesktop="winsta0\\default";try{bSuccess=ImpersonateWithToken(hTokenSys);bSuccess=Advapi32.CreateProcessAsUserW(hTokenSys,null,AppPath,IntPtr.Zero,IntPtr.Zero,bInherit,(uint)CreationFlags,NewEnvironment,null,ref si,out pi);if(!bSuccess){exitCode=1;}}catch(Exception){}finally{if(pi.hProcess!=IntPtr.Zero){Kernel32.CloseHandle(pi.hProcess);}if(pi.hThread!=IntPtr.Zero){Kernel32.CloseHandle(pi.hThread);}bSuccess=RevertToRealSelf();}StructOut so=new StructOut();so.ProcessId=pi.dwProcessId;so.ExitCode=exitCode;so.StdOut=stdOutString;return so;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]public struct StructOut{public uint ProcessId;public uint ExitCode;public string StdOut;}}}>>"%pth%%AS%TI.ps1"
+echo '@>>"%pth%%AS%TI.ps1"
+echo if (-not ('WinAPI.ProcessConfig' -as [type] )){$cp=[System.CodeDom.Compiler.CompilerParameters]::new(@('System.dll','System.ServiceProcess.dll'))>>"%pth%%AS%TI.ps1"
+echo $cp.TempFiles=[System.CodeDom.Compiler.TempFileCollection]::new($DismScratchDirGlobal,$false)>>"%pth%%AS%TI.ps1"
+echo $cp.GenerateInMemory=$true>>"%pth%%AS%TI.ps1"
+echo $cp.CompilerOptions='/platform:anycpu /nologo'>>"%pth%%AS%TI.ps1"
+echo Add-Type -TypeDefinition $GetTokenAPI -Language CSharp -ErrorAction Stop -CompilerParameters $cp}>>"%pth%%AS%TI.ps1"
+echo $Global:Token_SYS=[WinAPI.ProcessConfig]::DuplicateTokenSYS([System.IntPtr]::Zero)>>"%pth%%AS%TI.ps1"
+echo if ($Global:Token_SYS -eq [IntPtr]::Zero ){$Exit=$true; Return}>>"%pth%%AS%TI.ps1"
+echo $Global:Token_TI=[WinAPI.ProcessConfig]::DuplicateTokenSYS($Global:Token_SYS)>>"%pth%%AS%TI.ps1"
+echo if ($Global:Token_TI -eq [IntPtr]::Zero ){$Exit=$true; Return}>>"%pth%%AS%TI.ps1"
+echo [WinAPI.ProcessConfig+StructOut] $StructOut=New-Object -TypeName WinAPI.ProcessConfig+StructOut>>"%pth%%AS%TI.ps1"
+echo $StructOut=[WinAPI.ProcessConfig]::CreateProcessWithTokenSys($Global:Token_TI, $AppFullPath)>>"%pth%%AS%TI.ps1"
+echo return $StructOut.ExitCode>>"%pth%%AS%TI.ps1"
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%AS%TI.ps1">nul 2>&1
 set "trusted=%errorlevel%">nul 2>&1
-del /f /q "%pth%ti.ps1">nul 2>&1
+del /f /q "%pth%%AS%TI.ps1">nul 2>&1
 exit /b %trusted%
 
 :Backup
@@ -338,20 +349,14 @@ if exist "%save%MySecurityDefaults.reg" goto :EndBackup
 call :CheckTrusted&&goto :TrustedBackup
 %ifdef% UserSettingDone goto :EndBackup
 %msg% "Creating a recovery point if recovery is enabled..." "Создание точки восстановления, если восстановление включено..."
-%powershell% -ExecutionPolicy Bypass -Command "Checkpoint-Computer -DeScription '%AS% Script Backup %date% %time%' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
-::%msg% "Creating a complete copy of the registry in %regback%" "Создание полной копии реестра в %regback%"
-::if not exist "%regback%" md "%regback%">nul 2>&1
-::%msg% "Backup HKLM\SYSTEM..." "Бэкап HKLM\SYSTEM..."
-::%rs% HKLM\SYSTEM "%regback%\SYSTEM" /y>nul 2>&1
-::%msg% "Backup HKLM\SOFTWARE..." "Бэкап HKLM\SOFTWARE..."
-::%rs% HKLM\SOFTWARE "%regback%\SOFTWARE" /y>nul 2>&1
-::%msg% "Backup HKLM\SAM..." "Бэкап HKLM\SAM..."
-::%rs% HKLM\SAM "%regback%\SAM" /y>nul 2>&1
-::%msg% "Backup HKLM\SECURITY..." "Бэкап HKLM\SECURITY..."
-::%rs% HKLM\SECURITY "%regback%\SECURITY" /y>nul 2>&1
-::%msg% "Backup HKU\.DEFAULT..." "Бэкап HKU\.DEFAULT..."
-::%rs% HKU\.DEFAULT "%regback%\DEFAULT" /y>nul 2>&1
-%msg% "Backup settings from the HKCU registry key..." "Бэкап настроек из раздела реестра HKCU..."
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Checkpoint-Computer -DeScription '%AS% Script Backup %date% %time%' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
+%msg% "Creating a complete copy of the registry in %regback%" "Создание полной копии реестра в %regback%"
+if not exist "%regback%" md "%regback%">nul 2>&1
+%msg% "Creating full copy of HKLM\SOFTWARE in %regback%" "Создание полной копии HKLM\SOFTWARE"
+%rs% HKLM\SOFTWARE "%regback%\SOFTWARE" /y>nul 2>&1
+%msg% "Creating full copy of HKLM\SYSTEM in %regback%" "Создание полной копии HKLM\SYSTEM"
+%rs% HKLM\SYSTEM "%regback%\SYSTEM" /y>nul 2>&1
+%msg% "Backup security settings from the HKCU registry key..." "Бэкап настроек безопасности из раздела реестра HKCU..."
 call :HKCU_List
 call :BackupReg "hkcu.list" "hkcu.txt"
 del /f/q "%pth%hkcu.list">nul 2>&1
@@ -370,9 +375,9 @@ echo "%save%MySecurityDefaults.reg"
 exit /b
 
 :BackupReg
-set out="%pth%backup.ps1"
+set out="%pth%%AS%Backup.ps1"
 del /f/q %out%>nul 2>&1
-%powershell% -ExecutionPolicy Bypass -c "[io.file]::WriteAllText('%pth%backup.ps1','',[System.Text.Encoding]::UTF8)"
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "[io.file]::WriteAllText('%pth%%AS%Backup.ps1','',[System.Text.Encoding]::UTF8)"
 echo $I="%pth%%~1">>%out%
 echo $F="%pth%%~2">>%out%
 echo $O=New-Object System.Text.StringBuilder>>%out%
@@ -405,7 +410,7 @@ echo $O.AppendLine("")^|Out-Null}>>%out%
 echo else{if(-not $O.ToString().Contains("[-$S]")){$O.AppendLine("[-$S]")^|Out-Null>>%out%
 echo $O.AppendLine("")^|Out-Null}}}>>%out%
 echo $O.ToString()^|Set-Content -Path $F -Encoding Unicode>>%out%
-%powershell% -ExecutionPolicy Bypass -File %out%>nul 2>&1
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -f %out%>nul 2>&1
 del /f/q %out%>nul 2>&1
 exit /b
 
@@ -445,6 +450,7 @@ echo HKCU:%smw%\%cv%\AppHost,EnableWebContentEvaluation>>"%pth%hkcu.list"
 echo HKCU:%smw%\%cv%\AppHost,PreventOverride>>"%pth%hkcu.list"
 echo HKCU:%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance,Enabled>>"%pth%hkcu.list"
 echo HKCU:%smw%\%cv%\Policies\Attachments,SaveZoneInformation>>"%pth%hkcu.list"
+echo HKCU:%smw%\%cv%\Policies\Attachments,HideZoneInfoOnProperties>>"%pth%hkcu.list"
 echo HKCU:%smw%\%cv%\Policies\Attachments,ScanWithAntiVirus>>"%pth%hkcu.list"
 echo HKCU:%spm%\Edge,%ss%Enabled>>"%pth%hkcu.list"
 echo HKCU:%spm%\Edge,%ss%PuaEnabled>>"%pth%hkcu.list"
@@ -839,9 +845,10 @@ exit /b
 %ra% "HKLM%spm%\MRT" /v DontReportInfectionInformation /t %dw% /d 1 /f>nul 2>&1
 ::
 set "HidePath=HKLM%smw%\%cv%\Policies\Explorer"
-for /f "usebackq tokens=2*" %%A in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do (
-    set "SettingsPageVisibility=%%B"
-)
+%rq% "%HidePath%" /v "SettingsPageVisibility">nul 2>&1||(%ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "hide:windows%df%er" /f>nul 2>&1&goto :EndHideSetting)
+for /f "tokens=2*" %%a in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do set "SettingsPageVisibility=%%b"
+if "%SettingsPageVisibility%"==";" set SettingsPageVisibility=
+if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %ifNdef% SettingsPageVisibility %ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "hide:windows%df%er" /f>nul 2>&1
 echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1&&goto :EndHideSetting
 %ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "%SettingsPageVisibility%;windows%df%er" /f>nul 2>&1
@@ -863,7 +870,8 @@ exit /b
 %ra% "HKCU%smw% Security Health\State" /v "AppAndBrowser_StoreApps%ss%Off" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKCU%smw% Security Health\State" /v "AppAndBrowser_Pua%ss%Off" /t %dw% /d 1 /f>nul 2>&1
 ::
-%ra% "HKCU%smw%\%cv%\Policies\Attachments" /v "SaveZoneInformation" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKCU%smw%\%cv%\Policies\Attachments" /v "SaveZoneInformation" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKCU%smw%\%cv%\Policies\Attachments" /v "HideZoneInfoOnProperties" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKCU%smw%\%cv%\Policies\Attachments" /v "ScanWithAntiVirus" /t %dw% /d 1 /f>nul 2>&1
 ::
 %ra% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
@@ -997,9 +1005,7 @@ exit /b
 
 :Services
 %msg% "Disabling the launch of services and drivers..." "Отключение запуска служб и драйверов..."
-for %%s in (Win%df% MDCoreSvc WdNisSvc Sense wscsvc SgrmBroker SecurityHealthService webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd) do (
-%rq% "HKLM%scs%\%%~s">nul 2>&1&&%ra% "HKLM%scs%\%%~s" /v "Start" /t %dw% /d 4 /f>nul 2>&1
-)
+for %%s in (Win%df% MDCoreSvc WdNisSvc Sense wscsvc SgrmBroker SecurityHealthService webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd) do %rq% "HKLM%scs%\%%~s">nul 2>&1&&%ra% "HKLM%scs%\%%~s" /v "Start" /t %dw% /d 4 /f>nul 2>&1
 ::
 %rd% "HKLM%smw% NT\CurentVersion\Svchost" /v "WebThreatDefense" /f>nul 2>&1
 exit /b
@@ -1084,13 +1090,11 @@ exit /b
 :Restore
 %msg% "Restore default setting for system..." "Восстановление настроек по умолчанию для всей системы..."
 set "HidePath=HKLM%smw%\%cv%\Policies\Explorer"
-for /f "usebackq tokens=2*" %%A in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do (
-    set "SettingsPageVisibility=%%B"
-)
+for /f "tokens=2*" %%a in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do set "SettingsPageVisibility=%%b"
 %ifNdef% SettingsPageVisibility goto :SkipRestoreVisibility
-echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1&&goto :SkipRestoreVisibility
-set SettingsPageVisibility=%SettingsPageVisibility:windows%df%er;=%
-set SettingsPageVisibility=%SettingsPageVisibility:windows%df%er=%
+echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1||goto :SkipRestoreVisibility
+set SettingsPageVisibility=%SettingsPageVisibility:windowsdefender;=%
+set SettingsPageVisibility=%SettingsPageVisibility:windowsdefender=%
 if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "%SettingsPageVisibility%" /f>nul 2>&1
 :SkipRestoreVisibility
@@ -1270,6 +1274,8 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %rq% "HKLM%scs%\Win%df%">nul 2>&1&&%ra% "HKLM%scs%\Win%df%" /v "Start" /t %dw% /d 2 /f>nul 2>&1
 %rq% "HKLM%scs%\wscsvc">nul 2>&1&&%ra% "HKLM%scs%\wscsvc" /v "Start" /t %dw% /d 2 /f>nul 2>&1
 %rq% "HKLM%scs%\wtd">nul 2>&1&&%ra% "HKLM%scs%\wtd" /v "Start" /t %dw% /d 2 /f>nul 2>&1
+call :UnBlockUWP sechealth
+call :UnBlockUWP chxapp
 if exist "%save%MySecurityDefaults.reg" %reg% import "%save%MySecurityDefaults.reg">nul 2>&1
 exit /b
 
@@ -1290,7 +1296,7 @@ exit /b
 :BlockUWP
 set "UWP=%~1"
 set UwpName=
-%rq% "%uwpsearch%" /f "*%UWP%*" /k>nul 2>&1&&for /f "tokens=*" %%a in ('%rq% "%uwpsearch%" /f "*%UWP%*" /k') do (set "UwpName=%%~nxa"&goto :EndSearchBlockUWP)
+%rq% "%uwpsearch%" /f "*%UWP%*" /k>nul 2>&1&&for /f "tokens=2" %%a in ('%rq% "%uwpsearch%" /f "*%UWP%*" /k^|^|goto :EndSearchBlockUWP') do (set "UwpName=%%~nxa"&goto :EndSearchBlockUWP)
 :EndSearchBlockUWP
 %ifNdef% UwpName exit /b
 %ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
@@ -1317,8 +1323,8 @@ for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findst
 	%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 	%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 )
-%ifNdef% SAFEBOOT_OPTION %powershell% -ExecutionPolicy Bypass -Command "Reset-AppxPackage -Package %UwpName%" >nul 2>&1
-if [%build%] lss [22000] %powershell% -ExecutionPolicy Bypass -Command "Add-AppxPackage -%dl%DevelopmentMode -Register '%UwpPath%\AppXManifest.xml'" >nul 2>&1
+%ifNdef% SAFEBOOT_OPTION %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Reset-AppxPackage -Package %UwpName%" >nul 2>&1
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Add-AppxPackage -%dl%DevelopmentMode -Register '%UwpPath%\AppXManifest.xml'" >nul 2>&1
 exit /b
 
 :WinRE
@@ -1330,17 +1336,17 @@ for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not 
 %reagentc% /boottore>nul 2>&1
 manage-bde -protectors c: -%dl% -rebootcount 1
 %msg% "The computer will now reboot intoWindows Recovery Environment" "Компьютер сейчас перезагрузиться в Среду восстановления Windows"
-%shutdown% -r -f -t 5
+%shutdown% /r /f /t 3 /c "Reboot WinRE"
 %timeout% 4
 exit /b
 
 :SAC
-reg load HKLM\sac c:\windows\system32\config\system
-reg add HKLM\sac\controlset001\control\ci\policy /v VerifiedAndReputablePolicyState /t %dw% /d 2 /f 
-reg add HKLM\sac\controlset001\control\ci\protected /v VerifiedAndReputablePolicyStateMinValueSeen /t %dw% /d 2 /f
+reg load HKLM\sac %sys%\windows\system32\config\system
+reg add HKLM\sac\controlset001\control\ci\policy /v VerifiedAndReputablePolicyState /t REG_DWORD /d 2 /f 
+reg add HKLM\sac\controlset001\control\ci\protected /v VerifiedAndReputablePolicyStateMinValueSeen /t REG_DWORD /d 2 /f
 reg unload HKLM\sac
-reg load HKLM\sac2 C:\windows\system32\config\SOFTWARE
-reg add "HKLM\sac2\Microsoft\%wd%" /v SacLearningModeSwitch /t %dw% /d 0 /f
+reg load HKLM\sac2 %sys%\windows\system32\config\SOFTWARE
+reg add "HKLM\sac2\Microsoft\Windows Defender" /v SacLearningModeSwitch /t REG_DWORD /d 0 /f
 reg unload HKLM\sac2
 exit
 
