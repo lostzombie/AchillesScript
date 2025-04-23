@@ -1344,14 +1344,14 @@ manage-bde -protectors c: -%dl% -rebootcount 1
 exit /b
 
 :SAC
-reg load HKLM\sac %sys%\windows\system32\config\system
+reg load HKLM\sac %sys%:\windows\system32\config\system
 reg add HKLM\sac\controlset001\control\ci\policy /v VerifiedAndReputablePolicyState /t REG_DWORD /d 2 /f 
 reg add HKLM\sac\controlset001\control\ci\protected /v VerifiedAndReputablePolicyStateMinValueSeen /t REG_DWORD /d 2 /f
 reg unload HKLM\sac
-reg load HKLM\sac2 %sys%\windows\system32\config\SOFTWARE
+reg load HKLM\sac2 %sys%:\windows\system32\config\SOFTWARE
 reg add "HKLM\sac2\Microsoft\Windows Defender" /v SacLearningModeSwitch /t REG_DWORD /d 0 /f
 reg unload HKLM\sac2
-exit
+goto :EOF
 
 :MiniHelp
 cls
