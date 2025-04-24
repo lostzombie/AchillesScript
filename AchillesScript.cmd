@@ -4,8 +4,12 @@
 ::set nobackup=1
 ::#############################################################################
 cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.5.2"
+set "asv=ver 1.6.0"
 set AS=Achilles
+set "ifdef=if defined"
+set "ifNdef=if not defined"
+set "else=^|^|"
+set "then=^&^&"
 dir "%windir%\sysnative">nul 2>&1&&set "sysdir=%windir%\sysnative"||set "sysdir=%windir%\system32"
 if "%sysdir%"=="X:\windows\system32" set "sys="
 for %%i in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
@@ -26,7 +30,7 @@ set "dw=REG_DWORD"
 set "sz=REG_SZ"
 set "bcdedit=%sysdir%\bcdedit.exe"
 set "sc=%sysdir%\sc.exe"
-set "powershell=%sysdir%\WindowsPowerShell\v1.0\powershell.exe"
+set powershell="%sysdir%\WindowsPowerShell\v1.0\powershell.exe"
 set "regsvr32=%sysdir%\regsvr32.exe"
 set "whoami=%sysdir%\whoami.exe"
 set "schtasks=%sysdir%\schtasks.exe"
@@ -34,15 +38,21 @@ set "shutdown=%sysdir%\shutdown.exe"
 set "timeout=%sysdir%\timeout.exe"
 set "reagentc=%sysdir%\reagentc.exe"
 set "tk=%sysdir%\taskkill.exe"
+set "gpupdate=%sysdir%\gpupdate.exe"
 set "Script=%~dpnx0"
 set ScriptPS=\"%~dpnx0\"
+set ASR="HKLM\Software\%AS%Script"
 set "pth=%~dp0"
-set "save=%pth%"
-if not "%pth%"=="%tmp%\" goto :SkipDesktop
-for /f "tokens=2*" %%a in ('%rq% "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop"') do set "save=%%b\"
-for /f "tokens=*" %%a in ('echo %save%') do @set save=%%a
-if not exist "%save%" set "save=%USERPROFILE%\Desktop"
-:SkipDesktop
+%rq% %ASR% /v "Save" >nul 2>&1||for /f "tokens=2*" %%a in ('%rq% %ASR% /v "Save" 2^>nul') do (set "save=%%b"&goto :SkipFindSave) 
+%ifNdef% save set "save=%pth%"
+%ifNdef% usertemp set "usertemp=%tmp%"
+set SaveDesktop=
+if "%pth%"=="%tmp%\" set SaveDesktop=1
+%ifNdef% save if "%pth%"=="%usertemp%\" set SaveDesktop=1
+%ifdef% SaveDesktop for /f "tokens=2*" %%a in ('%rq% "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop" 2^>nul') do set "save=%%b\"
+%ifdef% SaveDesktop for /f "tokens=*" %%a in ('echo %save%') do @set save=%%a
+%ifdef% SaveDesktop if not exist "%save%" set "save=%USERPROFILE%\Desktop"
+:SkipFindSave
 set "arg1=%~1"
 set "arg2=%~2"
 shift
@@ -52,13 +62,10 @@ set "tiargs=%tiargs:~1%"
 set "msg=call :2LangMsg"
 set "err=call :2LangErr"
 set "errn=call :2LangErrNoPause"
-set "ifdef=if defined"
-set "ifNdef=if not defined"
-set "else=^|^|"
-set "then=^&^&"
 set L=ru
 set isTrustedInstaller=
 set UserSettingDone=
+set BackUpDone=
 ::#############################################################################
 set "dl=disable"
 set "df=defend"
@@ -75,13 +82,13 @@ set "sccd=%scc%\DeviceGuard"
 set "scs=\SYSTEM\CurrentControlSet\Services"
 set "scl=\SOFTWARE\Classes"
 set "uwpsearch=HKLM%scl%\Local Settings%smw%\%cv%\AppModel\PackageRepository\Packages"
-set "regback=%save%RegistryBackup"
+set "regback=%save%Registry Backup"
 ::
 (%rq% "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%rq% "HKLM%scc%\Nls\Language" /v Default|find "0x409">nul 2>&1) %then% (set Lang=%L%))
 %ifNdef% Lang (title %AS%' Script) else (title Ахилесов Скрипт)
 ::
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
-if not exist "%powershell%" %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
+if not exist %powershell% %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
 call :CheckTrusted||%bcdedit% >nul 2>&1||(%ifdef% AdminRestart %err% "Error - bcdedit is broken" "Ошибка - bcdedit поломан")
 call :CheckTrusted||%bcdedit% >nul 2>&1||(set AdminRestart=1&%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c Start-Process %cmd% -ArgumentList '/c', '%ScriptPS% %args%' -Verb RunAs&exit)
 echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write error in %pth%test.ps1" "Ошибка тестовой записи в %pth%test.ps1")
@@ -97,11 +104,9 @@ set REBOOT_PENDING=
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"
 	set  isValidArg=
 )
-(%rq% "HKLM\Software\%AS%Script">nul 2>&1) %then% (%rq% "HKLM\Software\%AS%Script" /v "UserSettingDone"|find "1">nul 2>&1) %then% (set UserSettingDone=1)>nul 2>&1
-%ifNdef% arg1 (
-	if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
-	%ifNdef% SAFEBOOT_OPTION call :UserSettingDone
-)
+(%rq% %ASR%>nul 2>&1) %then% (%rq% %ASR% /v "BackUpDone" 2>nul|find "1">nul 2>&1) %then% (set BackUpDone=1)>nul 2>&1
+%rd% %ASR% /f >nul 2>&1
+%ifNdef% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
 if "%arg1%"=="apply" (
 	%ifdef% arg2 for %%i in (1 2 3 4 6 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"
@@ -131,7 +136,9 @@ if "%arg1%"=="block"   if "%arg2%" neq "" (call :BlockProcess %arg2%&exit /b)
 if "%arg1%"=="unblock" if "%arg2%" neq "" (call :UnBlockProcess %arg2%&exit /b)
 if "%arg1%"=="ti"      (call :TrustedRun "%tiargs%"&exit /b %errorlevel%)
 if "%arg1%"=="backup"  (
-	call :CheckTrusted||(del /f/q "%save%MySecurityDefaults.reg">nul 2>&1&call :Backup)
+	call :CheckTrusted||del /f /q "%save%MySecurityDefaults.reg">nul 2>&1
+	call :CheckTrusted||rd /s /q "%regback%">nul 2>&1
+	call :CheckTrusted||(call :Backup&set UserSettingDone=1)
 	call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
 	call :Backup
 	exit /b
@@ -192,17 +199,17 @@ call :Reboot2Normal
 exit
 
 :MAIN
-%ifNdef% UserSettingDone (
+%ifNdef% BackUpDone %ifNdef% UserSettingDone (
 	%ifNdef% arg1 call :Warning
-	%ifNdef% nobackup %ifNdef% SAFEBOOT_OPTION call :CheckTrusted||call :Backup
+	%ifNdef% nobackup (call :CheckTrusted||call :Backup)
 	"%ProgramFiles%\%wd%\MpCmdRun.exe" -RemoveDefinitions -All>nul 2>&1
-	%ifdef% Policies call :CheckTrusted||call :PoliciesHKCU
-	%ifdef% Registry call :CheckTrusted||call :RegistryHKCU
+	%ifdef% Policies (call :CheckTrusted||call :PoliciesHKCU)
+	%ifdef% Registry (call :CheckTrusted||call :RegistryHKCU)
 )
 %ifdef% Item set "args=apply %Item%"
-call :UserSettingDone
 %ifNdef% nobackup cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
-%ifNdef% nobackup call :Backup
+%ifNdef% nobackup %ifNdef% BackUpDone call :Backup
+call :BackUpDone
 %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
 %ifdef% Policies call :Policies
@@ -267,10 +274,11 @@ for /f "tokens=2*" %%a in ('%rq% "HKLM%scc%\WMI\Autologger\EventLog-System\{5559
 if [%EventLog%]==[0x1] %ra% "HKLM%scc%\WMI\Autologger\EventLog-System\{555908d1-a6d7-4695-8e1e-26931d2012f4}" /v Enabled /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%scc%\SafeBoot\Minimal\%AS%Service" /ve /t REG_SZ /d "Service" /f>nul 2>&1
 %ifNdef% only %ra% "HKLM%smw%\%cv%\RunOnce" /v "*Wait" /t %sz% /d "cmd.exe /k title WAIT&echo WAIT...&if exist \"%pth%%AS%Boot.cmd\" (call \"%pth%%AS%Boot.cmd\"&exit)" /f >nul 2>&1
+%ifNdef% only %ra% %ASR% /v "Save" /t %sz% /d "%save%\" /f >nul 2>&1
 call :SafeBoot %only%
 %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
-%shutdown% /r /f /t 2 -c "Reboot Safe Mode" 
-%timeout% 3
+%shutdown% /r /f /t 3 /c "Reboot Safe Mode" 
+%timeout% /t 4
 exit
 
 :SafeBoot
@@ -278,9 +286,9 @@ set "only=%~1"
 del /f /q "%pth%%AS%Boot.cmd">nul 2>&1
 set win%df%=
 (%rq% "HKLM%scc%\SafeBoot\Minimal\Win%df%">nul 2>&1) %then% (set win%df%=1)
-set timeout=30
+set boottimeout=30
 set displaybootmenu=
-for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "timeout"') do set "timeout=%%t"
+for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "timeout"') do set "boottimeout=%%t"
 for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "displaybootmenu"') do set "displaybootmenu=%%t"
 for /f "tokens=2" %%t in ('%bcdedit% /v ^| find "default"') do set "default=%%t"
 for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {current} /d "Safe Mode" ^| find "{"') do set guid=%%a
@@ -291,7 +299,7 @@ for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {current} /d "Safe Mode" ^|
 %bcdedit% /set {%guid%} hypervisorlaunchtype off>nul 2>&1
 %bcdedit% /default {%guid%}>nul 2>&1
 echo chcp 65001>"%pth%%AS%Boot.cmd"
-echo bcdedit /timeout "%timeout%" >>"%pth%%AS%Boot.cmd"
+echo bcdedit /timeout "%boottimeout%" >>"%pth%%AS%Boot.cmd"
 %ifdef% displaybootmenu echo bcdedit /set {bootmgr} displaybootmenu %displaybootmenu% >>"%pth%%AS%Boot.cmd"
 %ifNdef% displaybootmenu echo bcdedit /deletevalue {bootmgr} displaybootmenu >>"%pth%%AS%Boot.cmd"
 %ifdef% default echo bcdedit /default %default% >>"%pth%%AS%Boot.cmd"
@@ -312,8 +320,10 @@ exit /b
 :Reboot2Normal
 %msg% "The computer will now reboot into default mode." "Компьютер сейчас перезагрузиться в обычный режим."
 %rd% "HKLM%smw%\%cv%\RunOnce" /v "*Wait" /f >nul 2>&1
+%rd% %ASR% /f >nul 2>&1
 %ifdef% SAFEBOOT_OPTION %shutdown% /r /f /t 0
-%ifNdef% SAFEBOOT_OPTION %shutdown% /r /f /t 3 /c "Reboot"&%timeout% 3
+%ifNdef% SAFEBOOT_OPTION %shutdown% /r /f /t 3 /c "Reboot"
+%timeout% /t 4
 exit
 
 :TrustedRun
@@ -322,6 +332,7 @@ exit
 %sc% start "TrustedInstaller">nul 2>&1
 del /f /q "%pth%%AS%TI.ps1">nul 2>&1
 set "RunAsTrustedInstaller=%~1"
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "$null|Out-File -FilePath '%pth%%AS%TI.ps1' -Encoding UTF8">nul 2>&1
 echo $AppFullPath=[System.Environment]::GetEnvironmentVariable('RunAsTrustedInstaller')>>"%pth%%AS%TI.ps1"
 echo [string]$GetTokenAPI=@'>>"%pth%%AS%TI.ps1"
 echo using System;using System.ServiceProcess;using System.Diagnostics;using System.Runtime.InteropServices;using System.Security.Principal;namespace WinAPI{internal static class WinBase{[StructLayout(LayoutKind.Sequential)]internal struct SECURITY_ATTRIBUTES{public int nLength;public IntPtr lpSecurityDeScriptor;public bool bInheritHandle;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct STARTUPINFO{public Int32 cb;public string lpReserved;public string lpDesktop;public string lpTitle;public uint dwX;public uint dwY;public uint dwXSize;public uint dwYSize;public uint dwXCountChars;public uint dwYCountChars;public uint dwFillAttribute;public uint dwFlags;public Int16 wShowWindow;public Int16 cbReserved2;public IntPtr lpReserved2;public IntPtr hStdInput;public IntPtr hStdOutput;public IntPtr hStdError;}[StructLayout(LayoutKind.Sequential)]internal struct PROCESS_INFORMATION{public IntPtr hProcess;public IntPtr hThread;public uint dwProcessId;public uint dwThreadId;}}internal static class WinNT{public enum TOKEN_TYPE{TokenPrimary=1,TokenImpersonation}public enum SECURITY_IMPERSONATION_LEVEL{SecurityAnonymous,SecurityIdentification,SecurityImpersonation,SecurityDelegation}[StructLayout(LayoutKind.Sequential,Pack=1)]internal struct TokPriv1Luid{public uint PrivilegeCount;public long Luid;public UInt32 Attributes;}}internal static class Advapi32{public const int SE_PRIVILEGE_ENABLED=0x00000002;public const uint CREATE_NO_WINDOW=0x08000000;public const uint CREATE_NEW_CONSOLE=0x00000010;public const uint CREATE_UNICODE_ENVIRONMENT=0x00000400;public const UInt32 STANDARD_RIGHTS_REQUIRED=0x000F0000;public const UInt32 STANDARD_RIGHTS_READ=0x00020000;public const UInt32 TOKEN_ASSIGN_PRIMARY=0x0001;public const UInt32 TOKEN_DUPLICATE=0x0002;public const UInt32 TOKEN_IMPERSONATE=0x0004;public const UInt32 TOKEN_QUERY=0x0008;public const UInt32 TOKEN_QUERY_SOURCE=0x0010;public const UInt32 TOKEN_ADJUST_PRIVILEGES=0x0020;public const UInt32 TOKEN_ADJUST_GROUPS=0x0040;public const UInt32 TOKEN_ADJUST_DEFAULT=0x0080;public const UInt32 TOKEN_ADJUST_SESSIONID=0x0100;public const UInt32 TOKEN_READ=(STANDARD_RIGHTS_READ^|TOKEN_QUERY);public const UInt32 TOKEN_ALL_ACCESS=(STANDARD_RIGHTS_REQUIRED^|TOKEN_ASSIGN_PRIMARY^|TOKEN_DUPLICATE^|TOKEN_IMPERSONATE^|TOKEN_QUERY^|TOKEN_QUERY_SOURCE^|TOKEN_ADJUST_PRIVILEGES^|TOKEN_ADJUST_GROUPS^|TOKEN_ADJUST_DEFAULT^|TOKEN_ADJUST_SESSIONID);[DllImport("advapi32.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]public static extern bool OpenProcessToken(IntPtr ProcessHandle,UInt32 DesiredAccess,out IntPtr TokenHandle);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public extern static bool DuplicateTokenEx(IntPtr hExistingToken,uint dwDesiredAccess,IntPtr lpTokenAttributes,WinNT.SECURITY_IMPERSONATION_LEVEL ImpersonationLevel,WinNT.TOKEN_TYPE TokenType,out IntPtr phNewToken);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]internal static extern bool LookupPrivilegeValue(string lpSystemName,string lpName,ref long lpLuid);[DllImport("advapi32.dll",SetLastError=true)]internal static extern bool AdjustTokenPrivileges(IntPtr TokenHandle,bool %dl%AllPrivileges,ref WinNT.TokPriv1Luid NewState,UInt32 Zero,IntPtr Null1,IntPtr Null2);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessAsUserW(IntPtr hToken,string lpApplicationName,string lpCommandLine,IntPtr lpProcessAttributes,IntPtr lpThreadAttributes,bool bInheritHandles,uint dwCreationFlags,IntPtr lpEnvironment,string lpCurrentDirectory,ref WinBase.STARTUPINFO lpStartupInfo,out WinBase.PROCESS_INFORMATION lpProcessInformation);[DllImport("advapi32.dll",SetLastError=true)]public static extern bool SetTokenInformation(IntPtr TokenHandle,uint TokenInformationClass,ref IntPtr TokenInformation,int TokenInformationLength);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public static extern bool RevertToSelf();}internal static class Kernel32{[Flags]public enum ProcessAccessFlags:uint{All=0x001F0FFF}[DllImport("kernel32.dll",SetLastError=true)]>>"%pth%%AS%TI.ps1"
@@ -339,7 +350,7 @@ echo if ($Global:Token_TI -eq [IntPtr]::Zero ){$Exit=$true; Return}>>"%pth%%AS%T
 echo [WinAPI.ProcessConfig+StructOut] $StructOut=New-Object -TypeName WinAPI.ProcessConfig+StructOut>>"%pth%%AS%TI.ps1"
 echo $StructOut=[WinAPI.ProcessConfig]::CreateProcessWithTokenSys($Global:Token_TI, $AppFullPath)>>"%pth%%AS%TI.ps1"
 echo return $StructOut.ExitCode>>"%pth%%AS%TI.ps1"
-%powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%AS%TI.ps1">nul 2>&1
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%AS%TI.ps1"
 set "trusted=%errorlevel%">nul 2>&1
 del /f /q "%pth%%AS%TI.ps1">nul 2>&1
 exit /b %trusted%
@@ -350,23 +361,19 @@ call :CheckTrusted&&goto :TrustedBackup
 %ifdef% UserSettingDone goto :EndBackup
 %msg% "Creating a recovery point if recovery is enabled..." "Создание точки восстановления, если восстановление включено..."
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Checkpoint-Computer -DeScription '%AS% Script Backup %date% %time%' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
-%msg% "Creating a complete copy of the registry in %regback%" "Создание полной копии реестра в %regback%"
-if not exist "%regback%" md "%regback%">nul 2>&1
-%msg% "Creating full copy of HKLM\SOFTWARE in %regback%" "Создание полной копии HKLM\SOFTWARE"
-%rs% HKLM\SOFTWARE "%regback%\SOFTWARE" /y>nul 2>&1
-%msg% "Creating full copy of HKLM\SYSTEM in %regback%" "Создание полной копии HKLM\SYSTEM"
-%rs% HKLM\SYSTEM "%regback%\SYSTEM" /y>nul 2>&1
+call :RegSave
 %msg% "Backup security settings from the HKCU registry key..." "Бэкап настроек безопасности из раздела реестра HKCU..."
 call :HKCU_List
 call :BackupReg "hkcu.list" "hkcu.txt"
 del /f/q "%pth%hkcu.list">nul 2>&1
 goto :EndBackup
 :TrustedBackup
+call :RegSave
 %msg% "Backup settings from the HKLM registry key..." "Бэкап настроек из раздела реестра HKLM..."
 call :HKLM_List
 call :BackupReg "hklm.list" "hklm.txt"
 del /f/q "%pth%hklm.list">nul 2>&1
-if exist "%pth%hkcu.txt" copy /b "%pth%hkcu.txt"+"%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1 
+if exist "%pth%hkcu.txt" copy /b "%pth%hkcu.txt"+"%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1
 if not exist "%pth%hkcu.txt" move /y "%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1
 del /f/q "%pth%hkcu.txt">nul 2>&1
 del /f/q "%pth%hklm.txt">nul 2>&1
@@ -374,10 +381,21 @@ echo "%save%MySecurityDefaults.reg"
 :EndBackup
 exit /b
 
+:RegSave
+if exist "%regback%\SOFTWARE" if exist "%regback%\SOFTWARE" goto :SkipRegSave
+%msg% "Creating a complete copy of the registry in %regback%" "Создание полной копии реестра в %regback%"
+if not exist "%regback%" md "%regback%">nul 2>&1
+%msg% "Creating full copy of HKLM\SOFTWARE in %regback%" "Создание полной копии HKLM\SOFTWARE"
+%rs% HKLM\SOFTWARE "%regback%\SOFTWARE" /y>nul 2>&1
+%msg% "Creating full copy of HKLM\SYSTEM in %regback%" "Создание полной копии HKLM\SYSTEM"
+%rs% HKLM\SYSTEM "%regback%\SYSTEM" /y>nul 2>&1
+:SkipRegSave
+exit /b
+
 :BackupReg
 set out="%pth%%AS%Backup.ps1"
 del /f/q %out%>nul 2>&1
-%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "[io.file]::WriteAllText('%pth%%AS%Backup.ps1','',[System.Text.Encoding]::UTF8)"
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "$null|Out-File -FilePath '%out%' -Encoding UTF8">nul 2>&1
 echo $I="%pth%%~1">>%out%
 echo $F="%pth%%~2">>%out%
 echo $O=New-Object System.Text.StringBuilder>>%out%
@@ -700,6 +718,7 @@ echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,WasEnabledBySysprep>>
 echo HKLM:%sccd%\Scenarios\KernelShadowStacks,AuditModeEnabled>>"%pth%hklm.list"
 echo HKLM:%sccd%\Scenarios\KernelShadowStacks,Enabled>>"%pth%hklm.list"
 echo HKLM:%sccd%\Scenarios\KernelShadowStacks,WasEnabledBy>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\WindowsHello,Enabled>>"%pth%hklm.list"
 echo HKLM:%scc%\Ubpm,CriticalMaintenance_%df%erCleanup>>"%pth%hklm.list"
 echo HKLM:%scc%\Ubpm,CriticalMaintenance_%df%erVerification>>"%pth%hklm.list"
 echo HKLM:%scc%\WMI\Autologger\%df%erApiLogger,Start>>"%pth%hklm.list"
@@ -730,16 +749,15 @@ echo HKLM:%scs%\WdFilter,Start>>"%pth%hklm.list"
 echo HKLM:%scs%\MsSecCore,Start>>"%pth%hklm.list"
 exit /b 
 
-:UserSettingDone
-%rd% "HKLM\Software\%AS%Script" /f>nul 2>&1
-set UserSettingDone=
+:BackUpDone
+%ra% %ASR% /v "BackUpDone" /t %dw% /d 1 /f>nul 2>&1
+set BackUpDone=1
 exit /b
 
 :PoliciesHKCU
 %msg% "Applying policies for the current user..." "Применение политик для текущего пользователя..."
 %ra% "HKCU%spm%\Edge" /v "%ss%Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKCU%spm%\Edge" /v "%ss%PuaEnabled" /t %dw% /d 0 /f>nul 2>&1
-%ra% "HKLM\Software\%AS%Script" /v "UserSettingDone" /t %dw% /d 1 /f>nul 2>&1
 set UserSettingDone=1
 exit /b
 
@@ -853,6 +871,7 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1&&goto :EndHideSetting
 %ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "%SettingsPageVisibility%;windows%df%er" /f>nul 2>&1
 :EndHideSetting
+%gpupdate% /force >nul 2>&1
 exit /b
 
 :RegistryHKCU
@@ -877,6 +896,7 @@ exit /b
 %ra% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 call :BlockUWP sechealth
 call :BlockUWP chxapp
+set UserSettingDone=1
 exit /b
 
 :Registry
@@ -974,6 +994,7 @@ exit /b
 %ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "AuditModeEnabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "WasEnabledBy" /t %dw% /d 4 /f>nul 2>&1
+%ra% "HKLM%sccd%\Scenarios\WindowsHello" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%scc%\Lsa" /v "LsaCfgFlags" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%scc%\Lsa" /v "RunAsPPL" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%scc%\Lsa" /v "RunAsPPLBoot" /t %dw% /d 0 /f>nul 2>&1
@@ -1246,6 +1267,7 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %rd% "HKLM%sccd%" /v "RequirePlatformSecurityFeatures" /f>nul 2>&1
 %rd% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /f>nul 2>&1
 %rd% "HKLM%sccd%\Scenarios\KernelShadowStacks" /f>nul 2>&1
+%rd% "HKLM%sccd%\Scenarios\WindowsHello" /f>nul 2>&1
 %ra% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erCleanup" /t %sz% /d "NT Task\Microsoft\Windows\%wd%\%wd% Cleanup" /f>nul 2>&1
 %ra% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erVerification" /t %sz% /d "NT Task\Microsoft\Windows\%wd%\%wd% Verification" /f>nul 2>&1
 %ra% "HKLM%scc%\WMI\Autologger\%df%erApiLogger" /v "Start" /t %dw% /d "1" /f>nul 2>&1
@@ -1277,6 +1299,7 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 call :UnBlockUWP sechealth
 call :UnBlockUWP chxapp
 if exist "%save%MySecurityDefaults.reg" %reg% import "%save%MySecurityDefaults.reg">nul 2>&1
+%gpupdate% /force >nul 2>&1
 exit /b
 
 :ListUWP
@@ -1318,8 +1341,8 @@ set UwpPath=
 %ifNdef% UwpName exit /b
 for /f "tokens=2*" %%a in ('%rq% "%uwpsearch%\%UwpName%" /v "Path" 2^>nul') do set "UwpPath=%%b"
 %ifNdef% UwpPath for /f "tokens=2*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\InboxApplications\%UwpName%" /v "Path" 2^>nul') do set "UwpPath=%%b"
-%ifNdef% UwpPath for /d %%f in ("%windir%\SystemApps\*%UWP%*") do set "UwpPath=%%f"
-%ifNdef% UwpPath for /d %%f in ("%ProgramFiles%\WindowsApps\*%UWP%*") do set "UwpPath=%%f"
+%ifNdef% UwpPath for /d %%f in ("%windir%\SystemApps\*%UWP%*") do set "UwpPath=%%f\AppXManifest.xml"
+%ifNdef% UwpPath for /d %%f in ("%ProgramFiles%\WindowsApps\*%UWP%*") do set "UwpPath=%%f\AppXManifest.xml"
 %rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f >nul 2>&1
 %rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f >nul 2>&1
 for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (
@@ -1327,7 +1350,7 @@ for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findst
 	%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 )
 %ifNdef% SAFEBOOT_OPTION %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Reset-AppxPackage -Package %UwpName%" >nul 2>&1
-%ifdef% UwpPath %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Add-AppxPackage -%dl%DevelopmentMode -Register '%UwpPath%\AppXManifest.xml'" >nul 2>&1
+%ifdef% UwpPath %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Add-AppxPackage -%dl%DevelopmentMode -Register '%UwpPath%'" >nul 2>&1
 exit /b
 
 :WinRE
