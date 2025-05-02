@@ -4,7 +4,7 @@
 ::set nobackup=1
 ::#############################################################################
 cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.6.0"
+set "asv=ver 1.6.1"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -200,12 +200,14 @@ exit
 
 :MAIN
 %ifNdef% BackUpDone %ifNdef% UserSettingDone (
+	cls
 	%ifNdef% arg1 call :Warning
 	%ifNdef% nobackup (call :CheckTrusted||call :Backup)
 	"%ProgramFiles%\%wd%\MpCmdRun.exe" -RemoveDefinitions -All>nul 2>&1
 	%ifdef% Policies (call :CheckTrusted||call :PoliciesHKCU)
 	%ifdef% Registry (call :CheckTrusted||call :RegistryHKCU)
 )
+cls
 %ifdef% Item set "args=apply %Item%"
 %ifNdef% nobackup cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
 %ifNdef% nobackup %ifNdef% BackUpDone call :Backup
@@ -228,7 +230,7 @@ exit /b
 (%ifdef% Lang (echo %~2) else (echo %~1))&exit /b 1
 
 :CheckTrusted
-dir "%SystemDrive%\System Volume Information">nul 2>&1&&exit /b 0||exit /b 1
+%whoami% /GROUPS|find "TrustedInstaller">nul 2>&1&&exit /b 0||exit /b 1
 
 :Warning
 cls
@@ -629,7 +631,6 @@ echo HKLM:%spmwd%,%dl%RoutinelyTakingAction>>"%pth%hklm.list"
 echo HKLM:%spmwd%,PUAProtection>>"%pth%hklm.list"
 echo HKLM:%spmwd%,RandomizeScheduleTaskTimes>>"%pth%hklm.list"
 echo HKLM:%spmwd%,ServiceKeepAlive>>"%pth%hklm.list"
-echo HKLM:%spmwd%,ServiceKeepAlive>>"%pth%hklm.list"
 echo HKLM:%spmwd%\Exclusions,%dl%AutoExclusions>>"%pth%hklm.list"
 echo HKLM:%spmwd%\MpEngine,EnableFileHashComputation>>"%pth%hklm.list"
 echo HKLM:%spmwd%\MpEngine,MpBafsExtendedTimeout>>"%pth%hklm.list"
@@ -703,13 +704,18 @@ echo HKLM:%spm%\Windows\WTDS\Components,NotifyPasswordReuse>>"%pth%hklm.list"
 echo HKLM:%spm%\Windows\WTDS\Components,NotifyUnsafeApp>>"%pth%hklm.list"
 echo HKLM:%spm%\Windows\WTDS\Components,ServiceEnabled>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}>>"%pth%hklm.list"
-echo HKLM:%scc%\CI\Policy,VerifiedAndReputablePolicyState>>"%pth%hklm.list"
+echo HKLM:%scc%\CI\Policy>>"%pth%hklm.list"
+echo HKLM:%scc%\CI\State>>"%pth%hklm.list"
 echo HKLM:%scc%\Lsa,LsaCfgFlags>>"%pth%hklm.list"
 echo HKLM:%scc%\Lsa,RunAsPPL>>"%pth%hklm.list"
 echo HKLM:%scc%\Lsa,RunAsPPLBoot>>"%pth%hklm.list"
 echo HKLM:%sccd%,EnableVirtualizationBasedSecurity>>"%pth%hklm.list"
 echo HKLM:%sccd%,Locked>>"%pth%hklm.list"
 echo HKLM:%sccd%,RequirePlatformSecurityFeatures>>"%pth%hklm.list"
+echo HKLM:%sccd%,RequireMicrosoftSignedBootChain>>"%pth%hklm.list"
+echo HKLM:%sccd%\Capabilities>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\CredentialGuard>>"%pth%hklm.list"
+echo HKLM:%sccd%\Scenarios\KeyGuard\Status>>"%pth%hklm.list"
 echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,Enabled>>"%pth%hklm.list"
 echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,HVCIMATRequired>>"%pth%hklm.list"
 echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,Locked>>"%pth%hklm.list"
@@ -718,7 +724,6 @@ echo HKLM:%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity,WasEnabledBySysprep>>
 echo HKLM:%sccd%\Scenarios\KernelShadowStacks,AuditModeEnabled>>"%pth%hklm.list"
 echo HKLM:%sccd%\Scenarios\KernelShadowStacks,Enabled>>"%pth%hklm.list"
 echo HKLM:%sccd%\Scenarios\KernelShadowStacks,WasEnabledBy>>"%pth%hklm.list"
-echo HKLM:%sccd%\Scenarios\WindowsHello,Enabled>>"%pth%hklm.list"
 echo HKLM:%scc%\Ubpm,CriticalMaintenance_%df%erCleanup>>"%pth%hklm.list"
 echo HKLM:%scc%\Ubpm,CriticalMaintenance_%df%erVerification>>"%pth%hklm.list"
 echo HKLM:%scc%\WMI\Autologger\%df%erApiLogger,Start>>"%pth%hklm.list"
@@ -979,6 +984,7 @@ exit /b
 %ra% "HKLM%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 ::
 %ra% "HKLM%scc%\CI\Policy" /v "VerifiedAndReputablePolicyState" /t %dw% /d 0 /f>nul 2>&1
+%rd% "HKLM%scc%\CI\State" /f>nul 2>&1
 %ra% "HKLM%smwd%" /v "SmartLockerMode" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%smwd%" /v "VerifiedAndReputableTrustModeEnabled" /t %dw% /d 0 /f>nul 2>&1
 ::
@@ -987,14 +993,17 @@ exit /b
 %rd% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBySysprep" /f>nul 2>&1
 %ra% "HKLM%sccd%" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%" /v "RequirePlatformSecurityFeatures" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%" /v "RequireMicrosoftSignedBootChain" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%" /v "Locked" /t %dw% /d 0 /f>nul 2>&1
+%rd% "HKLM%sccd%\Capabilities" /f>nul 2>&1
+%ra% "HKLM%sccd%\Scenarios\CredentialGuard" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "HVCIMATRequired" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "AuditModeEnabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%sccd%\Scenarios\KernelShadowStacks" /v "WasEnabledBy" /t %dw% /d 4 /f>nul 2>&1
-%ra% "HKLM%sccd%\Scenarios\WindowsHello" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
+
 %ra% "HKLM%scc%\Lsa" /v "LsaCfgFlags" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%scc%\Lsa" /v "RunAsPPL" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%scc%\Lsa" /v "RunAsPPLBoot" /t %dw% /d 0 /f>nul 2>&1
@@ -1016,6 +1025,7 @@ exit /b
 %rd% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erCleanup" /f>nul 2>&1
 %rd% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erVerification" /f>nul 2>&1
 ::
+%tk% /im %ss%.exe /t /f>nul 2>&1
 %rd% "HKLM%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
 %rd% "HKLM%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
 %rd% "HKLM\SOFTWARE\WOW6432Node\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}" /f>nul 2>&1
@@ -1262,12 +1272,15 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %ra% "HKLM\SYSTEM\ControlSet001\Control\CI\Protected" /v "VerifiedAndReputablePolicyStateMinValueSeen" /t %dw% /d "2" /f>nul 2>&1
 %ra% "HKLM%scc%\CI\Policy" /v "VerifiedAndReputablePolicyState" /t %dw% /d "1" /f>nul 2>&1
 %ra% "HKLM%scc%\CI\Protected" /v "VerifiedAndReputablePolicyStateMinValueSeen" /t %dw% /d "2" /f>nul 2>&1
+%rd% "HKLM%scc%\CI\State" /f>nul 2>&1
 %rd% "HKLM%sccd%" /v "EnableVirtualizationBasedSecurity" /f>nul 2>&1
 %rd% "HKLM%sccd%" /v "Locked" /f>nul 2>&1
 %rd% "HKLM%sccd%" /v "RequirePlatformSecurityFeatures" /f>nul 2>&1
+%rd% "HKLM%sccd%" /v "RequireMicrosoftSignedBootChain" /f>nul 2>&1
+%rd% "HKLM%sccd%\Scenarios\CredentialGuard" /f>nul 2>&1
 %rd% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /f>nul 2>&1
 %rd% "HKLM%sccd%\Scenarios\KernelShadowStacks" /f>nul 2>&1
-%rd% "HKLM%sccd%\Scenarios\WindowsHello" /f>nul 2>&1
+%rd% "HKLM%sccd%\Capabilities" /f>nul 2>&1
 %ra% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erCleanup" /t %sz% /d "NT Task\Microsoft\Windows\%wd%\%wd% Cleanup" /f>nul 2>&1
 %ra% "HKLM%scc%\Ubpm" /v "CriticalMaintenance_%df%erVerification" /t %sz% /d "NT Task\Microsoft\Windows\%wd%\%wd% Verification" /f>nul 2>&1
 %ra% "HKLM%scc%\WMI\Autologger\%df%erApiLogger" /v "Start" /t %dw% /d "1" /f>nul 2>&1
@@ -1360,7 +1373,7 @@ for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not 
 for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not errorlevel 1 (set winre=1))
 %ifNdef% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутсвует Среда восстановления Windows или её невозвможно включить"&exit /b
 %reagentc% /boottore>nul 2>&1
-manage-bde -protectors c: -%dl% -rebootcount 1
+manage-bde -protectors %sys%: -%dl% -rebootcount 2
 %msg% "The computer will now reboot intoWindows Recovery Environment" "Компьютер сейчас перезагрузиться в Среду восстановления Windows"
 %shutdown% /r /f /t 3 /c "Reboot WinRE"
 %timeout% 4
