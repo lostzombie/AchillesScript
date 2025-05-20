@@ -4,7 +4,7 @@
 ::set nobackup=1
 ::#############################################################################
 cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.6.1"
+set "asv=ver 1.6.2"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -43,15 +43,17 @@ set "Script=%~dpnx0"
 set ScriptPS=\"%~dpnx0\"
 set ASR="HKLM\Software\%AS%Script"
 set "pth=%~dp0"
-%rq% %ASR% /v "Save" >nul 2>&1||for /f "tokens=2*" %%a in ('%rq% %ASR% /v "Save" 2^>nul') do (set "save=%%b"&goto :SkipFindSave) 
+%ifdef% save goto :SkipFindSave
+%rq% %ASR% /v "Save" >nul 2>&1&&for /f "tokens=2*" %%a in ('%rq% %ASR% /v "Save" 2^>nul') do (set "save=%%b"&goto :SkipFindSave)
 %ifNdef% save set "save=%pth%"
 %ifNdef% usertemp set "usertemp=%tmp%"
 set SaveDesktop=
 if "%pth%"=="%tmp%\" set SaveDesktop=1
 %ifNdef% save if "%pth%"=="%usertemp%\" set SaveDesktop=1
-%ifdef% SaveDesktop for /f "tokens=2*" %%a in ('%rq% "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop" 2^>nul') do set "save=%%b\"
+%ifdef% SaveDesktop for /f "tokens=2*" %%a in ('%rq% "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop" 2^>nul') do set "save=%%b"
 %ifdef% SaveDesktop for /f "tokens=*" %%a in ('echo %save%') do @set save=%%a
 %ifdef% SaveDesktop if not exist "%save%" set "save=%USERPROFILE%\Desktop"
+set "save=%save%\Achilles Backup\"
 :SkipFindSave
 set "arg1=%~1"
 set "arg2=%~2"
@@ -89,7 +91,7 @@ set "regback=%save%Registry Backup"
 ::
 %whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
 if not exist %powershell% %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
-call :CheckTrusted||%bcdedit% >nul 2>&1||(%ifdef% AdminRestart %err% "Error - bcdedit is broken" "Ошибка - bcdedit поломан")
+call :CheckTrusted||%bcdedit% >nul 2>&1||(if AdminRestart==1 %err% "Error - bcdedit is broken or unable to get admin rights using powershell" "Ошибка - bcdedit поломан или невозможно получить права администратора с помощью powershell")
 call :CheckTrusted||%bcdedit% >nul 2>&1||(set AdminRestart=1&%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c Start-Process %cmd% -ArgumentList '/c', '%ScriptPS% %args%' -Verb RunAs&exit)
 echo test>>"%pth%test.ps1"&&del /f /q "%pth%test.ps1"||(%err% "Testing write error in %pth%test.ps1" "Ошибка тестовой записи в %pth%test.ps1")
 echo test>>"%pth%test.cmd"&&del /f /q "%pth%test.cmd"||(%err% "Testing write error in %pth%test.cmd" "Ошибка тестовой записи в %pth%test.cmd")
@@ -254,8 +256,8 @@ echo.
 )
 %ifdef% Services %msg% "The launch of %df%er services and drivers will be %dl%d." "Будет отключен запуск служб и драйверов защитника."&echo.
 %ifdef%    Block %msg% "The launch of %df%er executable files will be blocked." "Будет заблокирован запуск исполняемых файлов защитника."&echo.
-%ifNdef% SAFEBOOT_OPTION %msg% "The computer will be restarted twice, to safe mode and back." "Компьютер будет перезагружен дважды, в безопасный режим и обратно."
-%ifdef% SAFEBOOT_OPTION %msg% "The computer will be restarted." "Компьютер будет перезагружен."
+%ifNdef% SAFEBOOT_OPTION %msg% "[93mThe computer will be restarted [91mtwice[93m, to [91msafe mode[93m and back.[0m" "[93mКомпьютер будет перезагружен [91mдважды[93m, в [91mбезопасный режим[93m и обратно.[0m"
+%ifdef% SAFEBOOT_OPTION %msg% "[93mThe computer will be restarted.[0m" "[93mКомпьютер будет перезагружен.[0m"
 echo.
 %ifNdef% Lang (choice /m "You really want to %dl% Windows defences" /c "yn") else (choice /m "Вы действительно хотите отключить защиты Windows?" /c "дн")
 if [%errorlevel%]==[2] goto :BEGIN
