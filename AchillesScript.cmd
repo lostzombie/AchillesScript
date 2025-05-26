@@ -1,10 +1,15 @@
 ::https://github.com/lostzombie/AchillesScript
 @echo off
+
+::##Setting####################################################################
+
+::set NoBackup=1
+::set NoSecHealth=1
+
 ::#############################################################################
-::set nobackup=1
-::#############################################################################
+
 cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.6.2"
+set "asv=ver 1.6.5"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -30,7 +35,9 @@ set "dw=REG_DWORD"
 set "sz=REG_SZ"
 set "bcdedit=%sysdir%\bcdedit.exe"
 set "sc=%sysdir%\sc.exe"
+set "findstr=%sysdir%\findstr.exe"
 set powershell="%sysdir%\WindowsPowerShell\v1.0\powershell.exe"
+set "sp=Set-MpPreference"
 set "regsvr32=%sysdir%\regsvr32.exe"
 set "whoami=%sysdir%\whoami.exe"
 set "schtasks=%sysdir%\schtasks.exe"
@@ -68,6 +75,7 @@ set L=ru
 set isTrustedInstaller=
 set UserSettingDone=
 set BackUpDone=
+Set PoliciesDone=
 ::#############################################################################
 set "dl=disable"
 set "df=defend"
@@ -107,6 +115,7 @@ set REBOOT_PENDING=
 	set  isValidArg=
 )
 (%rq% %ASR%>nul 2>&1) %then% (%rq% %ASR% /v "BackUpDone" 2>nul|find "1">nul 2>&1) %then% (set BackUpDone=1)>nul 2>&1
+(%rq% %ASR%>nul 2>&1) %then% (%rq% %ASR% /v "PoliciesDone" 2>nul|find "1">nul 2>&1) %then% (set PoliciesDone=1)>nul 2>&1
 %rd% %ASR% /f >nul 2>&1
 %ifNdef% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1&set UserSettingDone=
 if "%arg1%"=="apply" (
@@ -204,19 +213,21 @@ exit
 %ifNdef% BackUpDone %ifNdef% UserSettingDone (
 	cls
 	%ifNdef% arg1 call :Warning
-	%ifNdef% nobackup (call :CheckTrusted||call :Backup)
-	"%ProgramFiles%\%wd%\MpCmdRun.exe" -RemoveDefinitions -All>nul 2>&1
+	%ifNdef% NoBackup (call :CheckTrusted||call :Backup)
 	%ifdef% Policies (call :CheckTrusted||call :PoliciesHKCU)
 	%ifdef% Registry (call :CheckTrusted||call :RegistryHKCU)
 )
 cls
 %ifdef% Item set "args=apply %Item%"
-%ifNdef% nobackup cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
-%ifNdef% nobackup %ifNdef% BackUpDone call :Backup
+%ifNdef% NoBackup cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
+%ifNdef% NoBackup %ifNdef% BackUpDone call :Backup
 call :BackUpDone
+call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
+%ifdef% Policies %ifNdef% PoliciesDone call :Policies
+%ifNdef% SAFEBOOT_OPTION call :SetMP
+%ifNdef% SAFEBOOT_OPTION "%ProgramFiles%\%wd%\MpCmdRun.exe" -RemoveDefinitions -All>nul 2>&1
 %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
-%ifdef% Policies call :Policies
 %ifdef% Registry call :Registry
 %ifdef% Services call :Services
 %ifdef%    Block call :Block
@@ -553,7 +564,11 @@ echo HKLM:%smwd%\Spynet,MAPSconcurrency>>"%pth%hklm.list"
 echo HKLM:%smwd%\Spynet,SpyNetReporting>>"%pth%hklm.list"
 echo HKLM:%smwd%\Spynet,SpyNetReportingLocation>>"%pth%hklm.list"
 echo HKLM:%smwd%\Spynet,SubmitSamplesConsent>>"%pth%hklm.list"
+echo HKLM:%smwd%\Threats\ThreatIDDefaultAction>>"%pth%hklm.list"
+echo HKLM:%smwd%\Threats\ThreatSeverityDefaultAction>>"%pth%hklm.list"
+echo HKLM:%smwd%\Threats\ThreatTypeDefaultAction>>"%pth%hklm.list"
 echo HKLM:%smwd%\%wd% Exploit Guard\ASR,EnableASRConsumers>>"%pth%hklm.list"
+echo HKLM:%smwd%\%wd% Exploit Guard\ASR\Rules>>"%pth%hklm.list"
 echo HKLM:%smwd%\%wd% Exploit Guard\Controlled Folder Access,EnableControlledFolderAccess>>"%pth%hklm.list"
 echo HKLM:%smwd%\%wd% Exploit Guard\Network Protection,EnableNetworkProtection>>"%pth%hklm.list"
 echo HKLM:%smwci%\ConfigSecurityPolicy.exe>>"%pth%hklm.list"
@@ -754,11 +769,20 @@ echo HKLM:%scs%\wtd,Start>>"%pth%hklm.list"
 echo HKLM:%scs%\WdBoot,Start>>"%pth%hklm.list"
 echo HKLM:%scs%\WdFilter,Start>>"%pth%hklm.list"
 echo HKLM:%scs%\MsSecCore,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\KslD,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\AppID,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\AppIDSvc,Start>>"%pth%hklm.list"
+echo HKLM:%scs%\applockerfltr,Start>>"%pth%hklm.list"
 exit /b 
 
 :BackUpDone
 %ra% %ASR% /v "BackUpDone" /t %dw% /d 1 /f>nul 2>&1
 set BackUpDone=1
+exit /b
+
+:SetMP
+set fc=-Force
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%sp% -CloudBlockLevel 0 %fc%;%sp% -%dl%ArchiveScanning 1 %fc%;%sp% -%dl%BehaviorMonitoring 1 %fc%;%sp% -%dl%BlockAtFirstSeen 1 %fc%;%sp% -%dl%BlockAtFirstSeen %fc%;%sp% -%dl%IntrusionPreventionSystem 1 %fc%;%sp% -%dl%IOAVProtection 1 %fc%;%sp% -%dl%PrivacyMode 1 %fc%;%sp% -%dl%RealtimeMonitoring 1 %fc%;%sp% -%dl%ScanningNetworkFiles 1 %fc%;%sp% -%dl%ScriptScanning 1 %fc%;%sp% -EnableNetworkProtection %dl%d %fc%;%sp% -HighThreatDefaultAction 9 %fc%;%sp% -LowThreatDefaultAction 9 %fc%;%sp% -ModerateThreatDefaultAction 9 %fc%;%sp% -PUAProtection %dl%d %fc%;%sp% -SevereThreatDefaultAction 9 %fc%;%sp% -Signature%dl%UpdateOnStartupWithoutEngine 1 %fc%;%sp% -UnknownThreatDefaultAction 9 %fc%" >nul 2>&1
 exit /b
 
 :PoliciesHKCU
@@ -855,21 +879,22 @@ exit /b
 %ra% "HKLM%spm%\Windows\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%spm%\Windows\DeviceGuard" /v "HVCIMATRequired" /t %dw% /d 0 /f>nul 2>&1
 ::
-%ra% "HKLM%spmwd% Security Center\Account protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd% Security Center\App and Browser protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd% Security Center\Device performance and health" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd% Security Center\Device security" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd% Security Center\Family options" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd% Security Center\Firewall and network protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd% Security Center\Notifications" /v "%dl%Notifications" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd% Security Center\Systray" /v "HideSystray" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd% Security Center\Virus and threat protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%spmwd%\UX Configuration" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\Account protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\App and Browser protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\Device performance and health" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\Device security" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\Family options" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\Firewall and network protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\Notifications" /v "%dl%Notifications" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\Systray" /v "HideSystray" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd% Security Center\Virus and threat protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%spmwd%\UX Configuration" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 ::
 %ra% "HKLM%spm%\MRT" /v DontOfferThroughWUAU /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spm%\MRT" /v DontReportInfectionInformation /t %dw% /d 1 /f>nul 2>&1
 ::
 set "HidePath=HKLM%smw%\%cv%\Policies\Explorer"
+%ifdef% NoSecHealth goto :EndHideSetting
 %rq% "%HidePath%" /v "SettingsPageVisibility">nul 2>&1||(%ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "hide:windows%df%er" /f>nul 2>&1&goto :EndHideSetting)
 for /f "tokens=2*" %%a in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do set "SettingsPageVisibility=%%b"
 if "%SettingsPageVisibility%"==";" set SettingsPageVisibility=
@@ -879,6 +904,8 @@ echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1&&goto :EndHideS
 %ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "%SettingsPageVisibility%;windows%df%er" /f>nul 2>&1
 :EndHideSetting
 %gpupdate% /force >nul 2>&1
+%ra% %ASR% /v "PoliciesDone" /t %dw% /d 1 /f>nul 2>&1
+set PoliciesDone"=1
 exit /b
 
 :RegistryHKCU
@@ -900,14 +927,29 @@ exit /b
 %ra% "HKCU%smw%\%cv%\Policies\Attachments" /v "HideZoneInfoOnProperties" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKCU%smw%\%cv%\Policies\Attachments" /v "ScanWithAntiVirus" /t %dw% /d 1 /f>nul 2>&1
 ::
-%ra% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
-call :BlockUWP sechealth
-call :BlockUWP chxapp
+%ifNdef% NoSecHealth %ra% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ifNdef% NoSecHealth call :BlockUWP sechealth
+%ifNdef% NoSecHealth call :BlockUWP chxapp
+call :ASR
 set UserSettingDone=1
+exit /b
+
+:ASR
+set "ASRs="
+set "ASRd="
+set "ASRn=0"
+for /f "tokens=1" %%i in ('%rq% "HKLM%smwd%\%wd% Exploit Guard\ASR\Rules" 2^>nul ^| %findstr% /B /C:"    "') do call :addrule "%%i"
+if %ASRn% gtr 0 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Set-MpPreference -AttackSurfaceReductionRules_Ids %ASRs% -AttackSurfaceReductionRules_Actions %ASRd%" >nul 2>&1
+exit /b
+
+:addrule
+%ifdef% ASRs (set "ASRs=%ASRs%,%~1"&set "ASRd=%ASRd%,Disabled"&set /a ASRn+=1)
+%ifNdef% ASRs (set "ASRs=%~1"&set "ASRd=Disabled"&set /a ASRn=1)
 exit /b
 
 :Registry
 %msg% "Applying registry settings..." "Применение настроек реестра..."
+::
 %ra% "HKLM%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" /t %dw% /d 0 /f>nul 2>&1
 ::
 %rd% "HKLM%smw%\%cv%\Shell Extensions\Approved" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /f>nul 2>&1
@@ -918,10 +960,10 @@ exit /b
 %ra% "HKLM%scl%\exefile\shell\runas" /v "No%ss%" /t %sz% /d "" /f>nul 2>&1
 %ra% "HKLM%scl%\exefile\shell\runasuser" /v "No%ss%" /t %sz% /d "" /f>nul 2>&1
 ::
-%ra% "HKLM%smwd% Security Center\Notifications" /v "%dl%EnhancedNotifications" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "FilesBlockedNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "NoActionNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "SummaryNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smwd% Security Center\Notifications" /v "%dl%EnhancedNotifications" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "FilesBlockedNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "NoActionNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smwd% Security Center\Virus and threat protection" /v "SummaryNotification%dl%d" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%smwd%" /v "%dl%AntiSpyware" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%smwd%" /v "%dl%AntiVirus" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%smwd%" /v "HybridModeEnabled" /t %dw% /d 0 /f>nul 2>&1
@@ -972,25 +1014,34 @@ exit /b
 %ra% "HKLM%smwd%\Spynet" /v "SpyNetReporting" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%smwd%\Spynet" /v "SpyNetReportingLocation" /t REG_MULTI_SZ /d "https://0.0.0.0" /f>nul 2>&1
 %ra% "HKLM%smwd%\Spynet" /v "SubmitSamplesConsent" /t %dw% /d 0 /f>nul 2>&1
+%rd% "HKLM%smwd%\Threats\ThreatIDDefaultAction" /f>nul 2>&1
+%ra% "HKLM%smwd%\Threats\ThreatSeverityDefaultAction" /v "0" /t %dw% /d 9 /f>nul 2>&1
+%ra% "HKLM%smwd%\Threats\ThreatSeverityDefaultAction" /v "1" /t %dw% /d 9 /f>nul 2>&1
+%ra% "HKLM%smwd%\Threats\ThreatSeverityDefaultAction" /v "2" /t %dw% /d 9 /f>nul 2>&1
+%ra% "HKLM%smwd%\Threats\ThreatSeverityDefaultAction" /v "3" /t %dw% /d 9 /f>nul 2>&1
+%ra% "HKLM%smwd%\Threats\ThreatSeverityDefaultAction" /v "4" /t %dw% /d 9 /f>nul 2>&1
+%ra% "HKLM%smwd%\Threats\ThreatSeverityDefaultAction" /v "5" /t %dw% /d 9 /f>nul 2>&1
+%rd% "HKLM%smwd%\Threats\ThreatTypeDefaultAction" /f>nul 2>&1"
 %ra% "HKLM\SOFTWARE\Microsoft\RemovalTools\MpGears" /v "HeartbeatTrackingIndex" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%smwd%\%wd% Exploit Guard\ASR" /v "EnableASRConsumers" /t %dw% /d 0 /f>nul 2>&1
+%rd% "HKLM%smwd%\%wd% Exploit Guard\ASR\Rules" /f>nul 2>&1
 %ra% "HKLM%smwd%\%wd% Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%smwd%\%wd% Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t %dw% /d 0 /f>nul 2>&1
 ::
-%rq% "HKLM%smw%\%cv%\Run" /v "SecurityHealth">nul 2>&1&&(
+%ifNdef% NoSecHealth %rq% "HKLM%smw%\%cv%\Run" /v "SecurityHealth">nul 2>&1&&(
 %rd% "HKLM%smw%\%cv%\Run" /v "SecurityHealth" /f>nul 2>&1
 %ra% "HKLM%smw%\%cv%\Run\Autoruns%dl%d" /v "SecurityHealth" /t REG_EXPAND_SZ /d "^%windir^%\system32\SecurityHealthSystray.exe" /f>nul 2>&1
 %ra% "HKLM%smw%\%cv%\Explorer\StartupApproved\Run" /v "SecurityHealth" /t REG_BINARY /d "FFFFFFFFFFFFFFFFFFFFFFFF" /f>nul 2>&1
 )
 ::
-%ra% "HKLM%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 ::
 %ra% "HKLM%scc%\CI\Policy" /v "VerifiedAndReputablePolicyState" /t %dw% /d 0 /f>nul 2>&1
 %rd% "HKLM%scc%\CI\State" /f>nul 2>&1
 %ra% "HKLM%smwd%" /v "SmartLockerMode" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%smwd%" /v "VerifiedAndReputableTrustModeEnabled" /t %dw% /d 0 /f>nul 2>&1
 ::
-%ra% "HKLM%smwd% Security Center\Device security" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smwd% Security Center\Device security" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 %rd% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBy" /f>nul 2>&1
 %rd% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "WasEnabledBySysprep" /f>nul 2>&1
 %ra% "HKLM%sccd%" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0 /f>nul 2>&1
@@ -1038,7 +1089,8 @@ exit /b
 
 :Services
 %msg% "Disabling the launch of services and drivers..." "Отключение запуска служб и драйверов..."
-for %%s in (Win%df% MDCoreSvc WdNisSvc Sense wscsvc SgrmBroker SecurityHealthService webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd) do %rq% "HKLM%scs%\%%~s">nul 2>&1&&%ra% "HKLM%scs%\%%~s" /v "Start" /t %dw% /d 4 /f>nul 2>&1
+for %%s in (Win%df% MDCoreSvc WdNisSvc Sense wscsvc SgrmBroker webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd KslD AppID AppIDSvc applockerfltr) do %rq% "HKLM%scs%\%%~s">nul 2>&1&&%ra% "HKLM%scs%\%%~s" /v "Start" /t %dw% /d 4 /f>nul 2>&1
+%ifNdef% NoSecHealth %rq% "HKLM%scs%\SecurityHealthService">nul 2>&1&&%ra% "HKLM%scs%\SecurityHealthService" /v "Start" /t %dw% /d 4 /f>nul 2>&1
 ::
 %rd% "HKLM%smw% NT\CurentVersion\Svchost" /v "WebThreatDefense" /f>nul 2>&1
 exit /b
@@ -1070,9 +1122,9 @@ exit /b
 %ra% "HKLM%smwci%\OfflineScannerShell.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\secinit.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\SecureKernel.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
-%ra% "HKLM%smwci%\SecurityHealthHost.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
-%ra% "HKLM%smwci%\SecurityHealthService.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
-%ra% "HKLM%smwci%\SecurityHealthSystray.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smwci%\SecurityHealthHost.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smwci%\SecurityHealthService.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ifNdef% NoSecHealth %ra% "HKLM%smwci%\SecurityHealthSystray.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\SenseAP.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\SenseAPToast.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\SenseCM.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
@@ -1311,6 +1363,10 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %rq% "HKLM%scs%\Win%df%">nul 2>&1&&%ra% "HKLM%scs%\Win%df%" /v "Start" /t %dw% /d 2 /f>nul 2>&1
 %rq% "HKLM%scs%\wscsvc">nul 2>&1&&%ra% "HKLM%scs%\wscsvc" /v "Start" /t %dw% /d 2 /f>nul 2>&1
 %rq% "HKLM%scs%\wtd">nul 2>&1&&%ra% "HKLM%scs%\wtd" /v "Start" /t %dw% /d 2 /f>nul 2>&1
+%rq% "HKLM%scs%\KslD">nul 2>&1&&%ra% "HKLM%scs%\KslD" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\AppID">nul 2>&1&&%ra% "HKLM%scs%\AppID" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\AppIDSvc">nul 2>&1&&%ra% "HKLM%scs%\AppIDSvc" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%rq% "HKLM%scs%\applockerfltr">nul 2>&1&&%ra% "HKLM%scs%\applockerfltr" /v "Start" /t %dw% /d 3 /f>nul 2>&1
 call :UnBlockUWP sechealth
 call :UnBlockUWP chxapp
 if exist "%save%MySecurityDefaults.reg" %reg% import "%save%MySecurityDefaults.reg">nul 2>&1
@@ -1325,7 +1381,7 @@ set UwpName=
 %ifNdef% UwpName exit /b
 echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%>>"%pth%hkcu.list"
 echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%>>"%pth%hkcu.list"
-for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| %findstr% /R /C:"S-1-5-21-*"') do (
 	echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
 	echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%>>"%pth%hkcu.list"
 	echo HKLM:%smw%\%cv%\Appx\AppxAllUserStore\%%~nxa\%UwpName%>>"%pth%hkcu.list")
@@ -1339,7 +1395,7 @@ set UwpName=
 %ifNdef% UwpName exit /b
 %ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f>nul 2>&1
 %ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f>nul 2>&1
-for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| %findstr% /R /C:"S-1-5-21-*"') do (
 	%ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
 	%ra% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f>nul 2>&1
 )
@@ -1360,7 +1416,7 @@ for /f "tokens=2*" %%a in ('%rq% "%uwpsearch%\%UwpName%" /v "Path" 2^>nul') do s
 %ifNdef% UwpPath for /d %%f in ("%ProgramFiles%\WindowsApps\*%UWP%*") do set "UwpPath=%%f\AppXManifest.xml"
 %rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%" /f >nul 2>&1
 %rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%" /f >nul 2>&1
-for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| findstr /R /C:"S-1-5-21-*"') do (
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| %findstr% /R /C:"S-1-5-21-*"') do (
 	%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 	%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 )
@@ -1370,9 +1426,9 @@ exit /b
 
 :WinRE
 set winre=
-for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not errorlevel 1 (set winre=1))
+for /f "delims=" %%i in ('%reagentc% /info ^| %findstr% /i "Enabled"') do (if not errorlevel 1 (set winre=1))
 %ifNdef% winre %reagentc% /enable>nul 2>&1
-for /f "delims=" %%i in ('%reagentc% /info ^| findstr /i "Enabled"') do (if not errorlevel 1 (set winre=1))
+for /f "delims=" %%i in ('%reagentc% /info ^| %findstr% /i "Enabled"') do (if not errorlevel 1 (set winre=1))
 %ifNdef% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутсвует Среда восстановления Windows или её невозвможно включить"&exit /b
 %reagentc% /boottore>nul 2>&1
 manage-bde -protectors %sys%: -%dl% -rebootcount 2
