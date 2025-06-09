@@ -9,7 +9,7 @@
 ::#############################################################################
 
 cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.6.5"
+set "asv=ver 1.6.6"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -38,6 +38,7 @@ set "sc=%sysdir%\sc.exe"
 set "findstr=%sysdir%\findstr.exe"
 set powershell="%sysdir%\WindowsPowerShell\v1.0\powershell.exe"
 set "sp=Set-MpPreference"
+set "ap=Add-MpPreference"
 set "regsvr32=%sysdir%\regsvr32.exe"
 set "whoami=%sysdir%\whoami.exe"
 set "schtasks=%sysdir%\schtasks.exe"
@@ -214,6 +215,7 @@ exit
 	cls
 	%ifNdef% arg1 call :Warning
 	%ifNdef% NoBackup (call :CheckTrusted||call :Backup)
+	%ifNdef% SAFEBOOT_OPTION call :SetMP
 	%ifdef% Policies (call :CheckTrusted||call :PoliciesHKCU)
 	%ifdef% Registry (call :CheckTrusted||call :RegistryHKCU)
 )
@@ -224,10 +226,10 @@ cls
 call :BackUpDone
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
 %ifdef% Policies %ifNdef% PoliciesDone call :Policies
-%ifNdef% SAFEBOOT_OPTION call :SetMP
 %ifNdef% SAFEBOOT_OPTION "%ProgramFiles%\%wd%\MpCmdRun.exe" -RemoveDefinitions -All>nul 2>&1
 %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
+%ifdef% Policies %ra% "HKLM%spmwd%" /v "%dl%AntiSpyware" /t %dw% /d 1 /f>nul 2>&1
 %ifdef% Registry call :Registry
 %ifdef% Services call :Services
 %ifdef%    Block call :Block
@@ -782,6 +784,7 @@ exit /b
 
 :SetMP
 set fc=-Force
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%ap% -ExclusionProcess '%cmd%' %fc%;%ap% -ExclusionProcess '%sysdir%\WindowsPowerShell\v1.0\powershell.exe' %fc%" >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%sp% -CloudBlockLevel 0 %fc%;%sp% -%dl%ArchiveScanning 1 %fc%;%sp% -%dl%BehaviorMonitoring 1 %fc%;%sp% -%dl%BlockAtFirstSeen 1 %fc%;%sp% -%dl%BlockAtFirstSeen %fc%;%sp% -%dl%IntrusionPreventionSystem 1 %fc%;%sp% -%dl%IOAVProtection 1 %fc%;%sp% -%dl%PrivacyMode 1 %fc%;%sp% -%dl%RealtimeMonitoring 1 %fc%;%sp% -%dl%ScanningNetworkFiles 1 %fc%;%sp% -%dl%ScriptScanning 1 %fc%;%sp% -EnableNetworkProtection %dl%d %fc%;%sp% -HighThreatDefaultAction 9 %fc%;%sp% -LowThreatDefaultAction 9 %fc%;%sp% -ModerateThreatDefaultAction 9 %fc%;%sp% -PUAProtection %dl%d %fc%;%sp% -SevereThreatDefaultAction 9 %fc%;%sp% -Signature%dl%UpdateOnStartupWithoutEngine 1 %fc%;%sp% -UnknownThreatDefaultAction 9 %fc%" >nul 2>&1
 exit /b
 
@@ -795,7 +798,6 @@ exit /b
 :Policies
 %msg% "Applying group policies..." "Применение групповых политик..." 
 %ra% "HKLM%spmwd%" /v "AllowFastServiceStartup" /t %dw% /d 0 /f>nul 2>&1
-%ra% "HKLM%spmwd%" /v "%dl%AntiSpyware" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spmwd%" /v "%dl%LocalAdminMerge" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spmwd%" /v "%dl%RoutinelyTakingAction" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spmwd%" /v "PUAProtection" /t %dw% /d 0 /f>nul 2>&1
@@ -939,7 +941,7 @@ set "ASRs="
 set "ASRd="
 set "ASRn=0"
 for /f "tokens=1" %%i in ('%rq% "HKLM%smwd%\%wd% Exploit Guard\ASR\Rules" 2^>nul ^| %findstr% /B /C:"    "') do call :addrule "%%i"
-if %ASRn% gtr 0 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Set-MpPreference -AttackSurfaceReductionRules_Ids %ASRs% -AttackSurfaceReductionRules_Actions %ASRd%" >nul 2>&1
+if %ASRn% gtr 0 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%sp% -AttackSurfaceReductionRules_Ids %ASRs% -AttackSurfaceReductionRules_Actions %ASRd%" >nul 2>&1
 exit /b
 
 :addrule
