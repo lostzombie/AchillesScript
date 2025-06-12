@@ -44,7 +44,7 @@ Just run it and select the appropriate item:
 
 1. Group Policies
 
-> Legally. Documented. Incomplete.]
+> Legally. Documented. Incomplete.
 >
 > Only known group policies are applied through the registry.
 >
