@@ -24,7 +24,7 @@ cmd /c curl -L -o %tmp%\a.cmd kutt.it/off&&%tmp%\a.cmd
 <tr><td>
 Execute the command from the header or download
 
-[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
+[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/releases/latest/download/AchillesScript.cmd)
 
 > There are no dependencies. Online is not required.
 
@@ -33,7 +33,7 @@ Just run it and select the appropriate item:
 </td><td>
 Выполните комманду из заголовка или скачайте
 
-[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/raw/refs/heads/main/AchillesScript.cmd)
+[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/releases/latest/download/AchillesScript.cmd)
 
 > Зависимостей нет. Онлайн не требуется.
 
