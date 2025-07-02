@@ -7,7 +7,7 @@ Disable Windows Defender and Security
 
 **WIN+R**
 ```
-cmd /c curl -L -o %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
+cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 ```
 
 ![English](https://img.shields.io/badge/Language-En-blue)&emsp;&emsp;![Russian](https://img.shields.io/badge/Language-Ru-blue)
