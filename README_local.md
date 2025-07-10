@@ -1,18 +1,16 @@
-<div align="center">
-  
-<img src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
+# Ахилесов скрипт
 
-# Achilles' Script
-Disable Windows Defender and Security
+Отключение Защитника Windows и Безопасности
 
 **WIN+R**
+
 ```
 cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 ```
 
 <div align="left">
 
-## 💻Terminal User Interface
+## 💻Интерфейс
   
 <img src="Media/tui_ru.png" alt="Achilles' Script TUI Ru" width='800'>
 
@@ -76,7 +74,7 @@ cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 
 Проверяется только присвоение переменной, значение не проверяется.
 
-## ✔️Command Line Interface
+## ✔️Командная строка
 
 Применение пунктов меню
 
