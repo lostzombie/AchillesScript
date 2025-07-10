@@ -59,6 +59,24 @@ Just run it and select the appropriate item:
 
 It is recommended to repeat the application after major Windows updates.
 
+## ⚙️Setting
+
+Uncoment in script or set in cmd before launch:
+
+`set NoBackup=1`
+
+to disable backup of your settings
+
+`set NoWarn=1`
+
+to disable warning before reboot
+
+`set NoSecHealth=1`
+
+if you don't want to disable the Security app
+
+Only the assignment of the variable is checked, the value is not checked.
+
 ## ✔️Command Line Interface
 
 Using menu items
