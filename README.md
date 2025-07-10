@@ -10,6 +10,8 @@ Disable Windows Defender and Security
 cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 ```
 <div align="left">
+
+## 🔤[Русское описание](README_local.md)
   
 ## 💻Terminal User Interface
   
