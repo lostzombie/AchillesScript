@@ -1,4 +1,8 @@
-<img src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
+<img align="right" src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
+
+<br>
+<br>
+<br>
 
 # Achilles' Script
 
