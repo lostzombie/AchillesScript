@@ -1,6 +1,6 @@
 <img align="right" src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
 
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/lostzombie/AchillesScript/total?style=for-the-badge&color=teal)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/lostzombie/AchillesScript/total?style=for-the-badge&color=blue)
 
 <br>
 <br>
@@ -10,7 +10,7 @@
 
 Disable Windows Defender and Security
 
-$\color{teal}{\textsf{WIN+R}}$
+**WIN+R**
 
 ```
 cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
