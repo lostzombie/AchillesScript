@@ -72,6 +72,8 @@ Just run it and select the appropriate item:
 > [!WARNING]
 > It is recommended to repeat the application after major Windows updates.
 
+https://github.com/user-attachments/assets/8461752a-a097-4c95-8882-78f884f2a361
+
 ---
 
 ## ⚙️ Setting
@@ -174,10 +176,6 @@ For the recovery environment - Enable Smart App Control:
 `AchillesScript.cmd sac`
 
 ---
-
-
-https://github.com/user-attachments/assets/8461752a-a097-4c95-8882-78f884f2a361
-
 
 ## ⚖️ License
 
