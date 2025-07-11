@@ -88,8 +88,6 @@ if "%pth%"=="%tmp%\" set SaveDesktop=1
 %ifdef% SaveDesktop if not exist "%save%" set "save=%USERPROFILE%\Desktop\"
 set "save=%save%Achilles Backup\"
 :SkipFindSave
-echo %save%
-pause
 set "arg1=%~1"
 set "arg2=%~2"
 shift
