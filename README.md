@@ -175,6 +175,10 @@ For the recovery environment - Enable Smart App Control:
 
 ---
 
+
+https://github.com/user-attachments/assets/8461752a-a097-4c95-8882-78f884f2a361
+
+
 ## ⚖️ License
 
 [WTFPL v2](https://wtfpl2.com)
