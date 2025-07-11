@@ -3,23 +3,26 @@
 <img src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
 
 # Achilles' Script
+
 Disable Windows Defender and Security
 
 **WIN+R**
+
 ```
 cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 ```
+
 <div align="left">
 
-## 🔤Russian readme [Русское описание](README_local.md)
-  
-## 💻Terminal User Interface
+### 🔤 Russian readme [[Русское описание](README_local.md)]
+
+---
+
+## 🖥 Terminal User Interface
   
 <img src="Media/tui_en.png" alt="Achilles' Script TUI En" width='800'>
 
-Execute the command from the header or download
-
-[AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/releases/latest/download/AchillesScript.cmd)
+Execute the command from the header or download [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/releases/latest/download/AchillesScript.cmd)
 
 > There are no dependencies. Online is not required.
 
@@ -59,7 +62,9 @@ Just run it and select the appropriate item:
 
 It is recommended to repeat the application after major Windows updates.
 
-## ⚙️Setting
+---
+
+## ⚙️ Setting
 
 Uncoment in script or set in cmd before launch:
 
@@ -77,11 +82,11 @@ if you don't want to disable the Security app
 
 Only the assignment of the variable is checked, the value is not checked.
 
-## ✔️Command Line Interface
+---
 
-Using menu items
+## 💻 Command Line Interface
 
-without warnings:
+Using menu items without warnings:
 
 Policies
 
@@ -142,9 +147,7 @@ Running with Trusted Installer privileges:
 `AchillesScript.cmd ti process.exe param1 param2`
 
 Backup of current security settings:
-(generates MySecurityDefaults.reg with all keys affected by the script, 
-create a restore point if they are enabled, 
-launch a RegBackup event in the scheduler if it is configured)
+Generates MySecurityDefaults.reg with all keys affected by the script, create a restore point if they are enabled, export full registry hives HKLM\SYSTEM, HKLM\SOFTWARE
 
 `AchillesScript.cmd backup`
 
@@ -156,11 +159,12 @@ Reboot into the recovery environment, if available:
 
 `AchillesScript.cmd winre`
 
-For the recovery environment - 
-Enable Smart App Control:
+For the recovery environment - Enable Smart App Control:
 
 `AchillesScript.cmd sac`
 
-## ⚡License
+---
+
+## ⚖️ License
 
 [WTFPL v2](https://wtfpl2.com)
