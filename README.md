@@ -1,5 +1,7 @@
 <img align="right" src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
 
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/lostzombie/AchillesScript/total?style=for-the-badge&color=teal)
+
 <br>
 <br>
 <br>
