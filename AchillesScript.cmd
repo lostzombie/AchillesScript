@@ -83,11 +83,13 @@ del /f /q "%~dp0name.txt">nul 2>&1
 set SaveDesktop=
 if "%pth%"=="%tmp%\" set SaveDesktop=1
 %ifNdef% save if "%pth%"=="%usertemp%\" set SaveDesktop=1
-%ifdef% SaveDesktop for /f "tokens=2*" %%a in ('%rq% "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop" 2^>nul') do set "save=%%b"
+%ifdef% SaveDesktop for /f "tokens=2*" %%a in ('%rq% "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop" 2^>nul') do set "save=%%b\"
 %ifdef% SaveDesktop for /f "tokens=*" %%a in ('echo %save%') do @set save=%%a
 %ifdef% SaveDesktop if not exist "%save%" set "save=%USERPROFILE%\Desktop\"
 set "save=%save%Achilles Backup\"
 :SkipFindSave
+echo %save%
+pause
 set "arg1=%~1"
 set "arg2=%~2"
 shift
