@@ -1,5 +1,3 @@
-<div align="center">
-
 <img src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
 
 # Achilles' Script
@@ -12,8 +10,6 @@ $\color{teal}{\textsf{WIN+R}}$
 cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 ```
 
-<div align="left">
-
 ### 🔤 Russian readme [[Русское описание](README_local.md)]
 
 ---
@@ -24,43 +20,51 @@ cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 
 Execute the command from the header or download [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/releases/latest/download/AchillesScript.cmd)
 
+> [!TIP]
 > There are no dependencies. Online is not required.
 
 Just run it and select the appropriate item:
 
-1. Group Policies
+---
+#### 1. Group Policies
 
+> [!NOTE]
 > Legally. Documented. Incomplete.
 >
 > Only known group policies are applied through the registry.
 >
 > Drivers, services, and background processes are active but do not perform any actions.
+---
+#### 2. Policies + Registry Settings
 
-2. Policies + Registry Settings
-
+> [!NOTE]
 > Semi-legally. Almost complete.
 >
 > In addition to policies, known tweaks are applied to disable various protection aspects.
 >
 > Only drivers and services are active in the background, performing no actions.
+---
+#### 3. Policies + Settings + Disabling Services and drivers
 
-3. Policies + Settings + Disabling Services and drivers
-
+> [!NOTE]
 > Illegally. Complete.
 >
 > Also disables the startup of all related services and drivers.
 >
 > No background activities.
+---
+#### 4. Policies + Settings + Disabling Services and drivers + Block launch executables
 
-4. Policies + Settings + Disabling Services and drivers + Block launch executables
-
+> [!NOTE]
 > Hacker-style. Excessive.
 >
 > Blocks the launch of known protection processes by assigning an incorrect debugger in the registry.
 >
 > Helps reduce the risk of enabling the defender after Windows update.
 
-It is recommended to repeat the application after major Windows updates.
+---
+> [!WARNING]
+> It is recommended to repeat the application after major Windows updates.
 
 ---
 
