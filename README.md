@@ -26,6 +26,10 @@ cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 
 Execute the command from the header or download [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/releases/latest/download/AchillesScript.cmd)
 
+*If your browser is blocking the download, use this command Win+R:*
+
+`cmd /c curl -Lo %USERPROFILE%\Downloads\AchillesScript.cmd kutt.it/off&start %USERPROFILE%\Downloads`
+
 > [!TIP]
 > There are no dependencies. Online is not required.
 
