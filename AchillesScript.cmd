@@ -14,9 +14,8 @@
 ::set NoSecHealth=1
 
 ::#############################################################################
-
 cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.7.0"
+set "asv=ver 1.7.1"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -38,6 +37,8 @@ set "ra=%reg% add"
 set "rq=%reg% query"
 set "rd=%reg% delete"
 set "rs=%reg% save"
+set "rl=%reg% load"
+set "ru=%reg% unload"
 set "dw=REG_DWORD"
 set "sz=REG_SZ"
 set "bcdedit=%sysdir%\bcdedit.exe"
@@ -63,7 +64,7 @@ set "pth=%~dp0"
 %ifdef% ASN goto SkipRandom
 setlocal EnableDelayedExpansion
 set index=8
-set number=65
+set number=52
 set symbols=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWQYZ
 :loopgen
 set /a rand=%number%*%random%/32768
@@ -74,7 +75,6 @@ echo %name%>"%~dp0name.txt"
 endlocal
 set /p ASN=<"%~dp0name.txt"
 del /f /q "%~dp0name.txt">nul 2>&1
-%ra% %ASR% /v "Name" /t %sz% /d "%ASN%" /f >nul 2>&1
 :SkipRandom
 %ifdef% save goto :SkipFindSave
 %rq% %ASR% /v "Save" >nul 2>&1&&for /f "tokens=2*" %%a in ('%rq% %ASR% /v "Save" 2^>nul') do (set "save=%%b"&goto :SkipFindSave)
@@ -88,6 +88,7 @@ if "%pth%"=="%tmp%\" set SaveDesktop=1
 %ifdef% SaveDesktop if not exist "%save%" set "save=%USERPROFILE%\Desktop\"
 set "save=%save%Achilles Backup\"
 :SkipFindSave
+%rq% %ASR% /v "NoSecHealth" >nul 2>&1&&for /f "tokens=2*" %%a in ('%rq% %ASR% /v "NoSecHealth" 2^>nul') do (set "NoSecHealth=%%b")
 set "arg1=%~1"
 set "arg2=%~2"
 shift
@@ -116,6 +117,7 @@ set "scs=\SYSTEM\CurrentControlSet\Services"
 set "scl=\SOFTWARE\Classes"
 set "uwpsearch=HKLM%scl%\Local Settings%smw%\%cv%\AppModel\PackageRepository\Packages"
 set "regback=%save%Registry Backup"
+set "plist=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"
 ::
 (%rq% "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%rq% "HKLM%scc%\Nls\Language" /v Default|find "0x409">nul 2>&1) %then% (set Lang=%L%))
 %ifNdef% Lang (title %AS%' Script) else (title Ахилесов Скрипт)
@@ -171,6 +173,7 @@ if "%arg1%"=="backup"  (
 	set NoBackup=
 	del /f /q "%save%MySecurityDefaults.reg">nul 2>&1
 	rd /s /q "%regback%">nul 2>&1
+	call :LoadUsers
 	call :Backup
 	exit /b
 )
@@ -223,6 +226,7 @@ goto :BEGIN
 cls
 %msg% "Restore defaults..." "Восстановление по умолчанию..."
 %ifdef% Item set "args=apply %Item%"
+call :CheckTrusted||call :LoadUsers
 call :CheckTrusted||call :RestoreCurrentUser
 %sc% query wdFilter | find /i "RUNNING" >nul 2>&1 && %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
@@ -233,12 +237,14 @@ exit
 :MAIN
 cls
 %ifNdef% NoWarn %ifNdef% arg1 call :Warning
+call :LoadUsers
 %ifNdef% NoBackup call :Backup
 %ifdef% Item set "args=apply %Item%">nul 2>&1
 %ifNdef% SAFEBOOT_OPTION %ifdef% Registry call :TasksDisable
 %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
-cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
+call :LoadUsers
 call :WorkUsers
+cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
 %ifdef% Policies call :Policies
 %ifdef% Registry call :Registry
 %ifdef% Registry call :ASRdel
@@ -313,6 +319,8 @@ call :SafeBoot %only%
 %ifNdef% only %ifdef% Lang %ifNdef% only %ra% "HKLM%smw%\%cv%\RunOnce" /v "*WAIT%ASN%" /t %sz% /d "cmd.exe /k if defined SAFEBOOT_OPTION (title Ждём&echo Пожалуйста ожидайте...&echo.&echo Скрипт работает в фоне...&echo Компьютер будет перезагружен автоматически.) else (exit)" /f >nul 2>&1
 %ra% "HKLM%smw%\%cv%\RunOnce" /v "*BOOT%ASN%" /t %sz% /d "cmd.exe /c \"%pth%%ASN%Boot.cmd\"" /f>nul 2>&1
 %ifNdef% only %ra% %ASR% /v "Save" /t %sz% /d "%save%\" /f >nul 2>&1
+%ifNdef% only %ra% %ASR% /v "Name" /t %sz% /d "%ASN%" /f >nul 2>&1
+%ifNdef% only %ifdef% NoSecHealth %ra% %ASR% /v "NoSecHealth" /t %sz% /d "1" /f >nul 2>&1
 %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
 %shutdown% /r /f /t 3 /c "Reboot Safe Mode" 
 %timeout% /t 4
@@ -531,7 +539,7 @@ echo HKCU:%smw%\%cv%\Policies\Attachments,HideZoneInfoOnProperties>>"%pth%hkcu.l
 echo HKCU:%smw%\%cv%\Policies\Attachments,ScanWithAntiVirus>>"%pth%hkcu.list"
 echo HKCU:%spm%\Edge,%ss%Enabled>>"%pth%hkcu.list"
 echo HKCU:%spm%\Edge,%ss%PuaEnabled>>"%pth%hkcu.list"
-for /f "tokens=7 delims=\" %%a in ('%rq% "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" ^| findstr /R /C:"S-1-5-21-*"') do (
+for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"') do (
 	echo HKU:\%%a%smw% Security Health\State,AppAndBrowser_Edge%ss%Off>>"%pth%hkcu.list"
 	echo HKU:\%%a%smw% Security Health\State,AppAndBrowser_Pua%ss%Off>>"%pth%hkcu.list"
 	echo HKU:\%%a%smw% Security Health\State,AppAndBrowser_StoreApps%ss%Off>>"%pth%hkcu.list"
@@ -832,15 +840,28 @@ echo HKLM:%scs%\AppIDSvc,Start>>"%pth%hklm.list"
 echo HKLM:%scs%\applockerfltr,Start>>"%pth%hklm.list"
 exit /b 
 
+:LoadUsers
+setlocal EnableDelayedExpansion
+for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"') do (
+	set "sid=%%a"
+	set hive=
+	%rq% "HKU\!sid!">nul 2>&1
+	if not "!errorlevel!"=="0" set hive=1
+	if "!hive!"=="1" for /f "tokens=2,*" %%b in ('%rq% "%plist%\!sid!" /v ProfileImagePath') do set sidpath=%%c
+	if "!hive!"=="1" %rl% "HKU\!sid!" "!sidpath!\NTUSER.DAT">nul 2>&1
+)
+endlocal
+exit /b
+
 :WorkUsers
-for /f "tokens=7 delims=\" %%a in ('%rq% "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" ^| findstr /R /C:"S-1-5-21-*"') do (
-	%ifdef% Policies call :PoliciesHKCU %%a
-	%ifdef% Registry call :RegistryHKCU %%a
+%msg% "Applying settings for users..." "Применение настроек для пользователей..."
+for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"') do (
+	%ifdef% Policies call :PoliciesHKU %%a
+	%ifdef% Registry call :RegistryHKU %%a
 )
 exit /b
 
-:PoliciesHKCU
-%msg% "Applying policies for users..." "Применение политик для пользователей..."
+:PoliciesHKU
 %ra% "HKU\%~1%spm%\Edge" /v "%ss%Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKU\%~1%spm%\Edge" /v "%ss%PuaEnabled" /t %dw% /d 0 /f>nul 2>&1
 exit /b
@@ -938,17 +959,17 @@ exit /b
 %ra% "HKLM%spm%\Windows\DeviceGuard" /v "HVCIMATRequired" /t %dw% /d 0 /f>nul 2>&1
 ::
 %ifNdef% NoSecHealth (
-		%ra% "HKLM%spmwd% Security Center\App and Browser protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
+	%ra% "HKLM%spmwd% Security Center\Account protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1	
 	%ra% "HKLM%spmwd% Security Center\Device performance and health" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 	%ra% "HKLM%spmwd% Security Center\Device security" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 	%ra% "HKLM%spmwd% Security Center\Family options" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 	%ra% "HKLM%spmwd% Security Center\Firewall and network protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 	%ra% "HKLM%spmwd% Security Center\Notifications" /v "%dl%Notifications" /t %dw% /d 1 /f>nul 2>&1
 	%ra% "HKLM%spmwd% Security Center\Systray" /v "HideSystray" /t %dw% /d 1 /f>nul 2>&1
+	%ra% "HKLM%spmwd%\UX Configuration" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 )
-%ifdef% Registry %ra% "HKLM%spmwd% Security Center\Account protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1	
+%ifdef% Registry %ra% "HKLM%spmwd% Security Center\App and Browser protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 %ifdef% Registry %ra% "HKLM%spmwd% Security Center\Virus and threat protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-%ifNdef% NoSecHealth (%ra% "HKLM%spmwd%\UX Configuration" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1)
 ::
 %ra% "HKLM%spm%\MRT" /v DontOfferThroughWUAU /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spm%\MRT" /v DontReportInfectionInformation /t %dw% /d 1 /f>nul 2>&1
@@ -973,9 +994,7 @@ exit /b
 %schtasks% /Change /TN "Microsoft\Windows\AppID\%ss%Specific" /%dl%>nul 2>&1
 exit /b
 
-:RegistryHKCU
-%msg% "Applying registry settings for users..." "Применение настроек реестра пользователей..." 
-::
+:RegistryHKU
 %ra% "HKU\%~1%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKU\%~1%smw%\%cv%\AppHost" /v "PreventOverride" /t %dw% /d 0 /f>nul 2>&1
 ::
@@ -987,11 +1006,7 @@ exit /b
 %ra% "HKU\%~1%smw%\%cv%\Policies\Attachments" /v "HideZoneInfoOnProperties" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKU\%~1%smw%\%cv%\Policies\Attachments" /v "ScanWithAntiVirus" /t %dw% /d 1 /f>nul 2>&1
 ::
-%ifNdef% NoSecHealth (
-	%ra% "HKU\%~1%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
-	%ifNdef% NoSecHealth (call :BlockUWP sechealth)
-	call :BlockUWP chxapp
-)
+%ifNdef% NoSecHealth %ra% "HKU\%~1%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
 exit /b
 
 :ASRdel
@@ -1149,6 +1164,8 @@ exit /b
 ::
 %ra% "HKLM%smw%\%cv%\Explorer" /v "%ss%Enabled" /t %sz% /d "Off" /f>nul 2>&1
 %ra% "HKLM%smw%\%cv%\Explorer" /v "AicEnabled" /t %sz% /d "Anywhere" /f>nul 2>&1
+%ifNdef% NoSecHealth call :BlockUWP sechealth
+call :BlockUWP chxapp
 exit /b
 
 :Services
@@ -1233,7 +1250,7 @@ exit /b %errorlevel%
 %rd% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /f>nul 2>&1
 %rd% "HKCU%smw%\%cv%\Policies\Attachments" /f>nul 2>&1
 %rd% "HKCU%spm%\Edge" /f>nul 2>&1
-for /f "tokens=7 delims=\" %%a in ('%rq% "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" ^| findstr /R /C:"S-1-5-21-*"') do (
+for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"') do (
 	%rd% "HKU\%%a%smw% Security Health\State" /v "AppAndBrowser_Edge%ss%Off" /f>nul 2>&1
 	%rd% "HKU\%%a%smw% Security Health\State" /v "AppAndBrowser_Pua%ss%Off" /f>nul 2>&1
 	%rd% "HKU\%%a%smw% Security Health\State" /v "AppAndBrowser_StoreApps%ss%Off" /f>nul 2>&1
