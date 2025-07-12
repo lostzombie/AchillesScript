@@ -2,7 +2,7 @@
 
 Отключение Защитника Windows и Безопасности
 
-$\color{teal}{\textsf{WIN+R}}$
+**WIN+R**
 
 ```
 cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
