@@ -13,9 +13,12 @@
 ::Do not disable Security App
 ::set NoSecHealth=1
 
+::Ignore REBOOT_PENDING
+::set NoPending=1
+
 ::#############################################################################
 cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.7.1"
+set "asv=ver 1.8.0"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -43,6 +46,7 @@ set "dw=REG_DWORD"
 set "sz=REG_SZ"
 set "bcdedit=%sysdir%\bcdedit.exe"
 set "sc=%sysdir%\sc.exe"
+set "find=%sysdir%\find.exe"
 set "findstr=%sysdir%\findstr.exe"
 set powershell="%sysdir%\WindowsPowerShell\v1.0\powershell.exe"
 %ifdef% ProgramFiles(x86) set csc="C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" 
@@ -56,6 +60,7 @@ set "timeout=%sysdir%\timeout.exe"
 set "reagentc=%sysdir%\reagentc.exe"
 set "tk=%sysdir%\taskkill.exe"
 set "gpupdate=%sysdir%\gpupdate.exe"
+set "tasklist=%sysdir%\tasklist.exe"
 set "Script=%~dpnx0"
 set ScriptPS=\"%~dpnx0\"
 set ASR="HKLM\Software\%AS%Script"
@@ -101,7 +106,7 @@ set "errn=call :2LangErrNoPause"
 set L=ru
 set isTrustedInstaller=
 ::#############################################################################
-set "dl=disable"
+set "dl=Disable"
 set "df=defend"
 set "wd=Windows %df%er"
 set "ss=SmartScreen"
@@ -117,12 +122,12 @@ set "scs=\SYSTEM\CurrentControlSet\Services"
 set "scl=\SOFTWARE\Classes"
 set "uwpsearch=HKLM%scl%\Local Settings%smw%\%cv%\AppModel\PackageRepository\Packages"
 set "regback=%save%Registry Backup"
-set "plist=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"
+set "plist=HKLM%smw% NT\%cv%\ProfileList"
 ::
-(%rq% "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%rq% "HKLM%scc%\Nls\Language" /v Default|find "0x409">nul 2>&1) %then% (set Lang=%L%))
+(%rq% "HKCU\Control Panel\International\User Profile\%L%">nul 2>&1) %then% (set Lang=%L%) %else% ((%rq% "HKLM%scc%\Nls\Language" /v Default|%find% "0x409">nul 2>&1) %then% (set Lang=%L%))
 %ifNdef% Lang (title %AS%' Script) else (title Ахилесов Скрипт)
 ::
-%whoami% /groups | find "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
+%whoami% /groups|%find% "S-1-5-32-544" >nul 2>&1||%ifdef% Lang (echo Запустите этот файл из под учетной записи с правами администратора)&pause&exit else (echo Run this file under an account with administrator rights)&pause&exit
 if not exist %powershell% %err% "Error %powershell% file not exist" "Ошибка файл %powershell% не найден"
 call :CheckTrusted||%bcdedit% >nul 2>&1||(if AdminRestart==1 %err% "Error - bcdedit is broken or unable to get admin rights using powershell" "Ошибка - bcdedit поломан или невозможно получить права администратора с помощью powershell")
 call :CheckTrusted||%bcdedit% >nul 2>&1||(set AdminRestart=1&%msg% "Requesting Administrator privileges..." "Запрос привилегий администратора..."&%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c Start-Process %cmd% -ArgumentList '/c', '%ScriptPS% %args%' -Verb RunAs&exit)
@@ -131,8 +136,8 @@ echo test>>"%pth%test.cmd"&&del /f /q "%pth%test.cmd"||(%err% "Testing write err
 set REBOOT_PENDING=
 %rq% "HKLM%smw%\%cv%\WindowsUpdate\Auto Update\RebootRequired" > nul 2>&1 && set REBOOT_PENDING=1
 %rq% "HKLM%smw%\%cv%\Component Based Servicing\RebootPending" > nul 2>&1 && set REBOOT_PENDING=1
-%ifNdef% arg1 %ifdef% REBOOT_PENDING %err% "Scheduled actions during reboot, reboot before using the script" "Запланированы действия во время перезагрузки, перед использованием скрипта перезагрузитесь"
-%ifdef% arg1 %ifdef% REBOOT_PENDING %errn% "Scheduled actions during reboot, reboot before using the script" "Запланированы действия во время перезагрузки, перед использованием скрипта перезагрузитесь"
+%ifNdef% NoPending %ifNdef% arg1 %ifdef% REBOOT_PENDING %err% "Scheduled actions during reboot, reboot before using the script" "Запланированы действия во время перезагрузки, перед использованием скрипта перезагрузитесь"
+%ifNdef% NoPending %ifdef% arg1 %ifdef% REBOOT_PENDING %errn% "Scheduled actions during reboot, reboot before using the script" "Запланированы действия во время перезагрузки, перед использованием скрипта перезагрузитесь"
 ::Args
 %ifdef% arg1 (
 	for %%i in (apply multi restore block unblock ti backup safeboot winre sac uwpoff uwpon) do if [%arg1%]==[%%i] set "isValidArg=%%i"
@@ -142,9 +147,9 @@ set REBOOT_PENDING=
 %rd% %ASR% /f >nul 2>&1
 %ifNdef% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
 if "%arg1%"=="apply" (
-	%ifdef% arg2 for %%i in (1 2 3 4 6 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
+	%ifdef% arg2 for %%i in (1 2 3 4 6 7 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"
-	%ifdef% arg2 for %%i in (1 2 3 4 6) do if [%arg2%]==[%%i] call :Menu%%i
+	%ifdef% arg2 for %%i in (1 2 3 4 6 7) do if [%arg2%]==[%%i] call :Menu%%i
 	if [%arg2%]==[policies] set Policies=1
 	if [%arg2%]==[setting]  set Registry=1
 	if [%arg2%]==[services] set Services=1
@@ -193,14 +198,13 @@ set "WindowsBuild=%WindowsBuild:~5,-1%"
 if [%win%] lss [10] %ifdef% Lang (echo Этот скрипт разработан для Windows 10 и новее)&echo.&pause&exit else (echo This Script is designed for Windows 10 and newer)&echo.&pause&exit
 for /f "tokens=2*" %%a in ('%rq% "HKLM%smw% NT\%cv%" /v ProductName') do set "WindowsVersion=%%b"
 if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
-
 ::#############################################################################
 :BEGIN
 set isValidItem=
 set Item=
 call :Screen
-%ifNdef% Lang (set /p Item="Enter menu item number using your keyboard [0-6]:") else (set /p Item="Введите номер пункта меню используя клавиатуру [0-6]:")
-for %%i in (1 2 3 4 5 6 0) do if [%Item%]==[%%i] set "isValidItem=%%i"
+%ifNdef% Lang (set /p Item="Enter menu item number using your keyboard [0-7]:") else (set /p Item="Введите номер пункта меню используя клавиатуру [0-7]:")
+for %%i in (1 2 3 4 5 6 7 0) do if [%Item%]==[%%i] set "isValidItem=%%i"
 %ifNdef% isValidItem goto :BEGIN
 if [%Item%] == [0] exit
 call :Menu%Item%
@@ -228,11 +232,14 @@ cls
 %ifdef% Item set "args=apply %Item%"
 call :CheckTrusted||call :LoadUsers
 call :CheckTrusted||call :RestoreCurrentUser
-%sc% query wdFilter | find /i "RUNNING" >nul 2>&1 && %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
+%sc% query wdFilter|%find% /i "RUNNING" >nul 2>&1 && %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
 call :Restore
 call :Reboot2Normal
 exit
+
+:Menu7
+call :Status
 
 :MAIN
 cls
@@ -254,16 +261,20 @@ call :Reboot2Normal
 ::#############################################################################
 
 :2LangMsg
+chcp 65001>nul 2>&1
 %ifdef% Lang (echo %~2) else (echo %~1)
 exit /b
+
 :2LangErr
+chcp 65001>nul 2>&1
 (%ifdef% Lang (echo %~2) else (echo %~1))&pause>nul 2>&1&exit
 
 :2LangErrNoPause
+chcp 65001>nul 2>&1
 (%ifdef% Lang (echo %~2) else (echo %~1))&exit /b 1
 
 :CheckTrusted
-%whoami% /GROUPS|find "TrustedInstaller">nul 2>&1&&exit /b 0||exit /b 1
+%whoami% /GROUPS|%find% "TrustedInstaller">nul 2>&1&&exit /b 0||exit /b 1
 
 :Warning
 cls
@@ -307,7 +318,7 @@ set "EventLog="
 for /f "tokens=2*" %%a in ('%rq% "HKLM%scc%\WMI\Autologger\EventLog-System\{555908d1-a6d7-4695-8e1e-26931d2012f4}" /v "Enabled" 2^>nul') do set "EventLog=%%b"
 if [%EventLog%]==[0x1] %ra% "HKLM%scc%\WMI\Autologger\EventLog-System\{555908d1-a6d7-4695-8e1e-26931d2012f4}" /v Enabled /t %dw% /d 0 /f>nul 2>&1
 %ifdef% only goto :SkipService
-echo using System; using System.Diagnostics; public class %ASN%{public static void Main(){string %ASN% = @"/c start "+'\u0022'+'\u0022'+" "+'\u0022'+@"%pth%%ASN%Boot.cmd"+'\u0022';Process.Start("cmd.exe", %ASN%);}}>"%pth%%ASN%.cs"
+echo using System; using System.Diagnostics; using System.ServiceProcess; namespace %ASN%WindowsService{public class %ASN%Service:ServiceBase{public %ASN%Service(){ServiceName = "%ASN% Service"; CanStop = true; AutoLog = false;} protected override void OnStart(string[] args){string %ASN% = @"/c start "+'\u0022'+'\u0022'+" "+'\u0022'+@"%pth%%ASN%Boot.cmd"+'\u0022';Process.Start("cmd.exe", %ASN%); this.Stop();}} class Program {static void Main() {ServiceBase.Run(new %ASN%Service());}}}>"%pth%%ASN%.cs"
 %csc% /out:"%pth%%ASN%.exe" "%pth%%ASN%.cs">nul 2>&1
 del /f /q "%pth%%ASN%.cs">nul 2>&1
 %sc% delete %ASN%>nul 2>&1
@@ -333,11 +344,11 @@ set win%df%=
 (%rq% "HKLM%scc%\SafeBoot\Minimal\Win%df%">nul 2>&1) %then% (set win%df%=1)
 set boottimeout=30
 set displaybootmenu=
-for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "timeout"') do set "boottimeout=%%t"
-for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| find "displaybootmenu"') do set "displaybootmenu=%%t"
-for /f "tokens=2" %%t in ('%bcdedit% /v ^| find "default"') do set "default=%%t"
-for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {current} /d "Safe Mode" ^| find "{"') do set guid=%%a
-%ifNdef% guid for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {default} /d "Safe Mode" ^| find "{"') do set guid=%%a
+for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| %find% "timeout"') do set "boottimeout=%%t"
+for /f "tokens=2" %%t in ('%bcdedit% /enum {bootmgr} ^| %find% "displaybootmenu"') do set "displaybootmenu=%%t"
+for /f "tokens=2" %%t in ('%bcdedit% /v ^| %find% "default"') do set "default=%%t"
+for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {current} /d "Safe Mode" ^| %find% "{"') do set guid=%%a
+%ifNdef% guid for /f "tokens=2 delims={}" %%a in ('%bcdedit% /copy {default} /d "Safe Mode" ^| %find% "{"') do set guid=%%a
 %bcdedit% /timeout "2" >nul 2>&1
 %bcdedit% /set {bootmgr} displaybootmenu Yes>nul 2>&1
 set safetry=0
@@ -345,7 +356,9 @@ set safetry=0
 if %safetry% gtr 5 call :SafeFail
 set /a safetry+=1
 %rq% "HKLM%smwd%\%wd% Exploit Guard\ASR\Rules" /v "33ddedf1-c6e0-47cb-833e-de6133960387" >nul 2>&1&&(
-	%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%sp% -AttackSurfaceReductionRules_Ids 33ddedf1-c6e0-47cb-833e-de6133960387 -AttackSurfaceReductionRules_Actions Disabled"
+	chcp 437>nul 2>&1
+	%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%sp% -AttackSurfaceReductionRules_Ids 33ddedf1-c6e0-47cb-833e-de6133960387 -AttackSurfaceReductionRules_Actions Disabled">nul 2>&1
+	chcp 65001>nul 2>&1
 	%rd% "HKLM%smwd%\%wd% Exploit Guard\ASR\Rules" /v "33ddedf1-c6e0-47cb-833e-de6133960387" /f >nul 2>&1
 )
 %bcdedit% /set {%guid%} safeboot minimal
@@ -397,7 +410,9 @@ exit
 %sc% start "TrustedInstaller">nul 2>&1
 del /f /q "%pth%%ASN%TI.ps1">nul 2>&1
 set "RunAsTrustedInstaller=%~1"
+chcp 437>nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "$null|Out-File -FilePath '%pth%%ASN%TI.ps1' -Encoding UTF8">nul 2>&1
+chcp 65001>nul 2>&1
 echo $AppFullPath=[System.Environment]::GetEnvironmentVariable('RunAsTrustedInstaller')>>"%pth%%ASN%TI.ps1"
 echo [string]$GetTokenAPI=@'>>"%pth%%ASN%TI.ps1"
 echo using System;using System.ServiceProcess;using System.Diagnostics;using System.Runtime.InteropServices;using System.Security.Principal;namespace WinAPI{internal static class WinBase{[StructLayout(LayoutKind.Sequential)]internal struct SECURITY_ATTRIBUTES{public int nLength;public IntPtr lpSecurityDeScriptor;public bool bInheritHandle;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct STARTUPINFO{public Int32 cb;public string lpReserved;public string lpDesktop;public string lpTitle;public uint dwX;public uint dwY;public uint dwXSize;public uint dwYSize;public uint dwXCountChars;public uint dwYCountChars;public uint dwFillAttribute;public uint dwFlags;public Int16 wShowWindow;public Int16 cbReserved2;public IntPtr lpReserved2;public IntPtr hStdInput;public IntPtr hStdOutput;public IntPtr hStdError;}[StructLayout(LayoutKind.Sequential)]internal struct PROCESS_INFORMATION{public IntPtr hProcess;public IntPtr hThread;public uint dwProcessId;public uint dwThreadId;}}internal static class WinNT{public enum TOKEN_TYPE{TokenPrimary=1,TokenImpersonation}public enum SECURITY_IMPERSONATION_LEVEL{SecurityAnonymous,SecurityIdentification,SecurityImpersonation,SecurityDelegation}[StructLayout(LayoutKind.Sequential,Pack=1)]internal struct TokPriv1Luid{public uint PrivilegeCount;public long Luid;public UInt32 Attributes;}}internal static class Advapi32{public const int SE_PRIVILEGE_ENABLED=0x00000002;public const uint CREATE_NO_WINDOW=0x08000000;public const uint CREATE_NEW_CONSOLE=0x00000010;public const uint CREATE_UNICODE_ENVIRONMENT=0x00000400;public const UInt32 STANDARD_RIGHTS_REQUIRED=0x000F0000;public const UInt32 STANDARD_RIGHTS_READ=0x00020000;public const UInt32 TOKEN_ASSIGN_PRIMARY=0x0001;public const UInt32 TOKEN_DUPLICATE=0x0002;public const UInt32 TOKEN_IMPERSONATE=0x0004;public const UInt32 TOKEN_QUERY=0x0008;public const UInt32 TOKEN_QUERY_SOURCE=0x0010;public const UInt32 TOKEN_ADJUST_PRIVILEGES=0x0020;public const UInt32 TOKEN_ADJUST_GROUPS=0x0040;public const UInt32 TOKEN_ADJUST_DEFAULT=0x0080;public const UInt32 TOKEN_ADJUST_SESSIONID=0x0100;public const UInt32 TOKEN_READ=(STANDARD_RIGHTS_READ^|TOKEN_QUERY);public const UInt32 TOKEN_ALL_ACCESS=(STANDARD_RIGHTS_REQUIRED^|TOKEN_ASSIGN_PRIMARY^|TOKEN_DUPLICATE^|TOKEN_IMPERSONATE^|TOKEN_QUERY^|TOKEN_QUERY_SOURCE^|TOKEN_ADJUST_PRIVILEGES^|TOKEN_ADJUST_GROUPS^|TOKEN_ADJUST_DEFAULT^|TOKEN_ADJUST_SESSIONID);[DllImport("advapi32.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]public static extern bool OpenProcessToken(IntPtr ProcessHandle,UInt32 DesiredAccess,out IntPtr TokenHandle);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public extern static bool DuplicateTokenEx(IntPtr hExistingToken,uint dwDesiredAccess,IntPtr lpTokenAttributes,WinNT.SECURITY_IMPERSONATION_LEVEL ImpersonationLevel,WinNT.TOKEN_TYPE TokenType,out IntPtr phNewToken);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]internal static extern bool LookupPrivilegeValue(string lpSystemName,string lpName,ref long lpLuid);[DllImport("advapi32.dll",SetLastError=true)]internal static extern bool AdjustTokenPrivileges(IntPtr TokenHandle,bool %dl%AllPrivileges,ref WinNT.TokPriv1Luid NewState,UInt32 Zero,IntPtr Null1,IntPtr Null2);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessAsUserW(IntPtr hToken,string lpApplicationName,string lpCommandLine,IntPtr lpProcessAttributes,IntPtr lpThreadAttributes,bool bInheritHandles,uint dwCreationFlags,IntPtr lpEnvironment,string lpCurrentDirectory,ref WinBase.STARTUPINFO lpStartupInfo,out WinBase.PROCESS_INFORMATION lpProcessInformation);[DllImport("advapi32.dll",SetLastError=true)]public static extern bool SetTokenInformation(IntPtr TokenHandle,uint TokenInformationClass,ref IntPtr TokenInformation,int TokenInformationLength);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public static extern bool RevertToSelf();}internal static class Kernel32{[Flags]public enum ProcessAccessFlags:uint{All=0x001F0FFF}[DllImport("kernel32.dll",SetLastError=true)]>>"%pth%%ASN%TI.ps1"
@@ -415,7 +430,9 @@ echo if ($Global:Token_TI -eq [IntPtr]::Zero ){$Exit=$true; Return}>>"%pth%%ASN%
 echo [WinAPI.ProcessConfig+StructOut] $StructOut=New-Object -TypeName WinAPI.ProcessConfig+StructOut>>"%pth%%ASN%TI.ps1"
 echo $StructOut=[WinAPI.ProcessConfig]::CreateProcessWithTokenSys($Global:Token_TI, $AppFullPath)>>"%pth%%ASN%TI.ps1"
 echo return $StructOut.ExitCode>>"%pth%%ASN%TI.ps1"
+chcp 437>nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%ASN%TI.ps1"
+chcp 65001>nul 2>&1
 set "trusted=%errorlevel%">nul 2>&1
 del /f /q "%pth%%ASN%TI.ps1">nul 2>&1
 exit /b %trusted%
@@ -423,22 +440,24 @@ exit /b %trusted%
 :Backup
 if exist "%save%MySecurityDefaults.reg" goto :EndBackup
 %msg% "Creating a recovery point if recovery is enabled..." "Создание точки восстановления, если восстановление включено..."
-%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Checkpoint-Computer -DeScription '%AS% Script Backup %date% %time%' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
+chcp 437>nul 2>&1
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Checkpoint-Computer -Description '%AS% Script Backup %date% %time%' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
+chcp 65001>nul 2>&1
 call :RegSave
 %msg% "Backup security settings from the HKCU registry key..." "Бэкап настроек безопасности из раздела реестра HKCU..."
 call :HKCU_List
 call :BackupReg "hkcu.list" "hkcu.txt"
-del /f /q "%pth%hkcu.list" >nul 2>&1
 %msg% "Backup security settings from the HKLM registry key..." "Бэкап настроек безопасности из раздела реестра HKLM..."
 call :HKLM_List
 call :BackupReg "hklm.list" "hklm.txt"
-del /f /q "%pth%hklm.list" >nul 2>&1
 if exist "%pth%hkcu.txt" copy /b "%pth%hkcu.txt"+"%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1
 if not exist "%pth%hkcu.txt" move /y "%pth%hklm.txt" "%save%MySecurityDefaults.reg">nul 2>&1
-del /f/q "%pth%hkcu.txt">nul 2>&1
-del /f/q "%pth%hklm.txt">nul 2>&1
 echo "%save%MySecurityDefaults.reg"
 :EndBackup
+del /f/q "%pth%hkcu.txt">nul 2>&1
+del /f/q "%pth%hklm.txt">nul 2>&1
+del /f /q "%pth%hkcu.list">nul 2>&1
+del /f /q "%pth%hklm.list" >nul 2>&1
 exit /b
 
 :RegSave
@@ -455,7 +474,9 @@ exit /b
 :BackupReg
 set out="%pth%%ASN%Backup.ps1"
 del /f/q %out%>nul 2>&1
+chcp 437>nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "$null|Out-File -FilePath '%out%' -Encoding UTF8">nul 2>&1
+chcp 65001>nul 2>&1
 echo $I="%pth%%~1">>%out%
 echo $F="%pth%%~2">>%out%
 echo $O=New-Object System.Text.StringBuilder>>%out%
@@ -495,7 +516,9 @@ echo else{if(-not $O.ToString().Contains("[-$S]")){[void]$O.AppendLine("[-$S]")>
 echo [void]$O.AppendLine("")}}}>>%out%
 echo finally{if($regKey){$regKey.Close()}}}>>%out%
 echo [System.IO.File]::WriteAllText($F, $O.ToString(), [System.Text.Encoding]::Unicode)>>%out%
+chcp 437>nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -f %out%>nul 2>&1
+chcp 65001>nul 2>&1
 del /f/q %out%>nul 2>&1
 exit /b
 
@@ -522,7 +545,10 @@ echo.
 %msg% "[36m─────────────────────────────────────────────────────────────────────────────────────[0m" "[36m─────────────────────────────────────────────────────────────────────────────[0m"
 %msg% " [93m[5][0m Help"                                                                             " [93m[5][0m Помощь"
 %msg% " [93m[6][0m Restore Defaults"                                                                 " [93m[6][0m Восстановить по умолчанию"
-%msg% " [93m[0][0m Exit"                                                                             " [93m[0][0m Выход"
+%msg% "[36m─────────────────────────────────────────────────────────────────────────────────────[0m" "[36m─────────────────────────────────────────────────────────────────────────────[0m"
+%msg% " [1;34m[7][0m Current status"                                                                     " [1;34m[7][0m Текущий cтатус"
+%msg% "[36m─────────────────────────────────────────────────────────────────────────────────────[0m" "[36m─────────────────────────────────────────────────────────────────────────────[0m"
+%msg% " [1;37m[0][0m Exit"                                                                             " [1;37m[0][0m Выход"
 echo.
 exit /b
 
@@ -539,7 +565,9 @@ echo HKCU:%smw%\%cv%\Policies\Attachments,HideZoneInfoOnProperties>>"%pth%hkcu.l
 echo HKCU:%smw%\%cv%\Policies\Attachments,ScanWithAntiVirus>>"%pth%hkcu.list"
 echo HKCU:%spm%\Edge,%ss%Enabled>>"%pth%hkcu.list"
 echo HKCU:%spm%\Edge,%ss%PuaEnabled>>"%pth%hkcu.list"
-for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"') do (
+echo HKCU:\Software\Microsoft\Edge,%ss%Enabled>>"%pth%hkcu.list"
+echo HKCU:\Software\Microsoft\Edge,%ss%PuaEnabled>>"%pth%hkcu.list"
+for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| %findstr% /R /C:"S-1-5-21-*"') do (
 	echo HKU:\%%a%smw% Security Health\State,AppAndBrowser_Edge%ss%Off>>"%pth%hkcu.list"
 	echo HKU:\%%a%smw% Security Health\State,AppAndBrowser_Pua%ss%Off>>"%pth%hkcu.list"
 	echo HKU:\%%a%smw% Security Health\State,AppAndBrowser_StoreApps%ss%Off>>"%pth%hkcu.list"
@@ -551,6 +579,8 @@ for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"
 	echo HKU:\%%a%smw%\%cv%\Policies\Attachments,ScanWithAntiVirus>>"%pth%hkcu.list"
 	echo HKU:\%%a%spm%\Edge,%ss%Enabled>>"%pth%hkcu.list"
 	echo HKU:\%%a%spm%\Edge,%ss%PuaEnabled>>"%pth%hkcu.list"
+	echo HKU:\%%a\Software\Microsoft\Edge,%ss%Enabled>>"%pth%hkcu.list"
+	echo HKU:\%%a\Software\Microsoft\Edge,%ss%PuaEnabled>>"%pth%hkcu.list"
 )
 call :ListUWP sechealth
 call :ListUWP chxapp
@@ -569,12 +599,6 @@ echo HKLM:%scl%\exefile\shell\runasuser,No%ss%>>"%pth%hklm.list"
 echo HKLM:%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}>>"%pth%hklm.list"
 echo HKLM:%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\InProcServer32>>"%pth%hklm.list"
 echo HKLM:%scl%\WOW6432Node\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32>>"%pth%hklm.list"
-echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}>>"%pth%hklm.list"
-echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0>>"%pth%hklm.list"
-echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\0>>"%pth%hklm.list"
-echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\0\win64>>"%pth%hklm.list"
-echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\FLAGS>>"%pth%hklm.list"
-echo HKLM:%scl%\TypeLib\{93EB5B57-E8B9-4576-8425-C0D3D6195B4F}\1.0\HELPDIR>>"%pth%hklm.list"
 echo HKLM:\SOFTWARE\Microsoft\RemovalTools\MpGears,HeartbeatTrackingIndex>>"%pth%hklm.list"
 echo HKLM:%smwd% Security Center\Device security,UILockdown>>"%pth%hklm.list"
 echo HKLM:%smwd% Security Center\Notifications,%dl%EnhancedNotifications>>"%pth%hklm.list"
@@ -657,6 +681,7 @@ echo HKLM:%smwci%\mpextms.exe>>"%pth%hklm.list"
 echo HKLM:%smwci%\MpSigStub.exe>>"%pth%hklm.list"
 echo HKLM:%smwci%\MRT.exe>>"%pth%hklm.list"
 echo HKLM:%smwci%\MsMpEng.exe>>"%pth%hklm.list"
+echo HKLM:%smwci%\MsMpEngCP.exe>>"%pth%hklm.list"
 echo HKLM:%smwci%\MsSense.exe>>"%pth%hklm.list"
 echo HKLM:%smwci%\NisSrv.exe>>"%pth%hklm.list"
 echo HKLM:%smwci%\OfflineScannerShell.exe>>"%pth%hklm.list"
@@ -690,7 +715,11 @@ echo HKLM:%smw%\%cv%\Shell Extensions\Approved,{09A47860-11B0-4DA5-AFA5-26D86198
 echo HKLM:%smw%\%cv%\Shell Extensions\Blocked,{09A47860-11B0-4DA5-AFA5-26D86198A780}>>"%pth%hklm.list"
 echo HKLM:%smw%\%cv%\WINEVT\Channels\Microsoft-Windows-%wd%\Operational,Enabled>>"%pth%hklm.list"
 echo HKLM:%smw%\%cv%\WINEVT\Channels\Microsoft-Windows-%wd%\WHC,Enabled>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\WTDS\Components>>"%pth%hklm.list"
+echo HKLM:%smw%\%cv%\WTDS\FeatureFlags>>"%pth%hklm.list"
 echo HKLM:%smw%\%cv%\Policies\Explorer,SettingsPageVisibility>>"%pth%hklm.list"
+echo HKLM:%spm%\Edge,PreventOverride>"%pth%hkcu.list"
+echo HKLM:%spm%\Edge,%ss%Enabled>>"%pth%hkcu.list"
 echo HKLM:%spm%\MRT,DontOfferThroughWUAU>>"%pth%hklm.list"
 echo HKLM:%spm%\MRT,DontReportInfectionInformation>>"%pth%hklm.list"
 echo HKLM:%spm%\MicrosoftEdge\PhishingFilter>>"%pth%hklm.list"
@@ -781,6 +810,7 @@ echo HKLM:%spm%\Windows\DeviceGuard,HypervisorEnforcedCodeIntegrity>>"%pth%hklm.
 echo HKLM:%spm%\Windows\DeviceGuard,LsaCfgFlags>>"%pth%hklm.list"
 echo HKLM:%spm%\Windows\DeviceGuard,RequirePlatformSecurityFeatures>>"%pth%hklm.list"
 echo HKLM:%spm%\Windows\System,Enable%ss%>>"%pth%hklm.list"
+echo HKLM:%spm%\Windows\System,Shell%ss%Level>>"%pth%hklm.list"
 echo HKLM:%spm%\Windows\WTDS\Components,NotifyMalicious>>"%pth%hklm.list"
 echo HKLM:%spm%\Windows\WTDS\Components,NotifyPasswordReuse>>"%pth%hklm.list"
 echo HKLM:%spm%\Windows\WTDS\Components,NotifyUnsafeApp>>"%pth%hklm.list"
@@ -842,7 +872,7 @@ exit /b
 
 :LoadUsers
 setlocal EnableDelayedExpansion
-for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"') do (
+for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| %findstr% /R /C:"S-1-5-21-*"') do (
 	set "sid=%%a"
 	set hive=
 	%rq% "HKU\!sid!">nul 2>&1
@@ -855,7 +885,7 @@ exit /b
 
 :WorkUsers
 %msg% "Applying settings for users..." "Применение настроек для пользователей..."
-for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"') do (
+for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| %findstr% /R /C:"S-1-5-21-*"') do (
 	%ifdef% Policies call :PoliciesHKU %%a
 	%ifdef% Registry call :RegistryHKU %%a
 )
@@ -864,14 +894,16 @@ exit /b
 :PoliciesHKU
 %ra% "HKU\%~1%spm%\Edge" /v "%ss%Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKU\%~1%spm%\Edge" /v "%ss%PuaEnabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKU\%~1%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" /t %dw% /d 0 /f>nul 2>&1
 exit /b
 
 :Policies
 %msg% "Applying group policies..." "Применение групповых политик..."
-%ra% "HKLM%smwd%\Features" /v "TamperProtection" /t %dw% /d 0 /f>nul 2>&1
-%ra% "HKLM%smwd%\Features" /v "TamperProtectionSource" /t %dw% /d 0 /f>nul 2>&1 
-%ifNdef% NoSecHealth %ra% "HKLM%scc%\CI\Policy" /v "VerifiedAndReputablePolicyState" /t %dw% /d 0 /f>nul 2>&1
-%ifNdef% NoSecHealth %ra% "HKLM%sccd%" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "TamperProtection" /t %dw% /d 4 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "TamperProtectionSource" /t %dw% /d 2 /f>nul 2>&1 
+%ra% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%sccd%" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%scc%\CI\Policy" /v "VerifiedAndReputablePolicyState" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%spmwd%" /v "%dl%AntiSpyware" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spmwd%" /v "%dl%Antivirus" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spmwd%" /v "AllowFastServiceStartup" /t %dw% /d 0 /f>nul 2>&1
@@ -939,7 +971,10 @@ exit /b
 %ra% "HKLM%spmwd%\%wd% Exploit Guard\Network Protection" /v "EnableNetworkProtection" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%spmwd% Security Center\App and Browser protection" /v "DisallowExploitProtectionOverride" /t %dw% /d 1 /f>nul 2>&1
 ::
+%ra% "HKLM%spm%\Edge" /v "%ss%Enabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%spm%\Edge" /v "PreventOverride" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%spm%\Windows\System" /v "Enable%ss%" /t %dw% /d 0 /f>nul 2>&1
+%rd% "HKLM%spm%\Windows\System" /v "Shell%ss%Level" /f>nul 2>&1
 %ra% "HKLM%spmwd%\%ss%" /v "ConfigureAppInstallControlEnabled" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spmwd%\%ss%" /v "ConfigureAppInstallControl" /t %sz% /d "Anywhere" /f>nul 2>&1
 %ra% "HKLM%spm%\MicrosoftEdge\PhishingFilter" /v "EnabledV9" /t %dw% /d 0 /f>nul 2>&1
@@ -974,16 +1009,17 @@ exit /b
 %ra% "HKLM%spm%\MRT" /v DontOfferThroughWUAU /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM%spm%\MRT" /v DontReportInfectionInformation /t %dw% /d 1 /f>nul 2>&1
 ::
+%ifdef% NoSechealth goto :EndHideSetting
 set "HidePath=HKLM%smw%\%cv%\Policies\Explorer"
 %rq% "%HidePath%" /v "SettingsPageVisibility">nul 2>&1||(%ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "hide:windows%df%er" /f>nul 2>&1&goto :EndHideSetting)
 for /f "tokens=2*" %%a in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do set "SettingsPageVisibility=%%b"
 if "%SettingsPageVisibility%"==";" set SettingsPageVisibility=
 if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %ifNdef% SettingsPageVisibility %ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "hide:windows%df%er" /f>nul 2>&1
-echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1&&goto :EndHideSetting
+echo %SettingsPageVisibility% | %find% /i "windows%df%er">nul 2>&1&&goto :EndHideSetting
 %ra% "%HidePath%" /v "SettingsPageVisibility" /t %sz% /d "%SettingsPageVisibility%;windows%df%er" /f>nul 2>&1
 :EndHideSetting
-%ra% "HKLM%smw%\%cv%\RunOnce" /v "*gpupdate" /t %sz% /d "%gpupdate% /force" >nul 2>&1
+if exist "%gpupdate%" %ra% "HKLM%smw%\%cv%\RunOnce" /v "*gpupdate" /t %sz% /d "%gpupdate% /force" >nul 2>&1
 exit /b
 
 :TasksDisable
@@ -998,11 +1034,14 @@ exit /b
 %ra% "HKU\%~1%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKU\%~1%smw%\%cv%\AppHost" /v "PreventOverride" /t %dw% /d 0 /f>nul 2>&1
 ::
+%ra% "HKU\%~1\Software\Microsoft\Edge\%ss%Enabled" /ve /t %dw%  /d "0" /f>nul 2>&1
+%ra% "HKU\%~1\Software\Microsoft\Edge\%ss%PuaEnabled" /ve /t %dw%  /d "0" /f>nul 2>&1
+::
 %ra% "HKU\%~1%smw% Security Health\State" /v "AppAndBrowser_Edge%ss%Off" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKU\%~1%smw% Security Health\State" /v "AppAndBrowser_StoreApps%ss%Off" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKU\%~1%smw% Security Health\State" /v "AppAndBrowser_Pua%ss%Off" /t %dw% /d 1 /f>nul 2>&1
 ::
-%ra% "HKU\%~1%smw%\%cv%\Policies\Attachments" /v "SaveZoneInformation" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKU\%~1%smw%\%cv%\Policies\Attachments" /v "SaveZoneInformation" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKU\%~1%smw%\%cv%\Policies\Attachments" /v "HideZoneInfoOnProperties" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKU\%~1%smw%\%cv%\Policies\Attachments" /v "ScanWithAntiVirus" /t %dw% /d 1 /f>nul 2>&1
 ::
@@ -1012,10 +1051,12 @@ exit /b
 :ASRdel
 set "ASRs="
 set "ASRd="
-set "ASRn=0"
+set /a ASRn=0
 for /f "tokens=1" %%i in ('%rq% "HKLM%smwd%\%wd% Exploit Guard\ASR\Rules" 2^>nul ^| %findstr% /B /C:"    "') do call :addrule "%%i"
 if %ASRn% gtr 0 %msg% "Disabling attack surface reduction rules ASR..." "Отключение правил сокращения направлений атак ASR..."
+chcp 437>nul 2>&1
 if %ASRn% gtr 0 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%sp% -AttackSurfaceReductionRules_Ids %ASRs% -AttackSurfaceReductionRules_Actions %ASRd%">nul 2>&1
+chcp 65001>nul 2>&1
 exit /b
 
 :addrule
@@ -1057,8 +1098,8 @@ exit /b
 :SkipCoreService
 %ra% "HKLM%smwd%\Features" /v "EnableCACS" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%smwd%\Features" /v "Protection" /t %dw% /d 0 /f>nul 2>&1
-%ra% "HKLM%smwd%\Features" /v "TamperProtection" /t %dw% /d 0 /f>nul 2>&1
-%ra% "HKLM%smwd%\Features" /v "TamperProtectionSource" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "TamperProtection" /t %dw% /d 4 /f>nul 2>&1
+%ra% "HKLM%smwd%\Features" /v "TamperProtectionSource" /t %dw% /d 2 /f>nul 2>&1
 %rq% "HKLM%smwd%\EcsConfigs">nul 2>&1||goto :SkipEcsConfigs
 %ra% "HKLM%smwd%\Features\EcsConfigs" /v "EnableAdsSymlinkMitigation_MpRamp" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM%smwd%\Features\EcsConfigs" /v "EnableBmProcessInfoMetastoreMaintenance_MpRamp" /t %dw% /d 0 /f>nul 2>&1
@@ -1164,14 +1205,24 @@ exit /b
 ::
 %ra% "HKLM%smw%\%cv%\Explorer" /v "%ss%Enabled" /t %sz% /d "Off" /f>nul 2>&1
 %ra% "HKLM%smw%\%cv%\Explorer" /v "AicEnabled" /t %sz% /d "Anywhere" /f>nul 2>&1
+::
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "ServiceEnabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "NotifyUnsafeApp" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "NotifyPasswordReuse" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "NotifyMalicious" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "CaptureThreatWindow" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\FeatureFlags" /v "BlockUxDisabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\FeatureFlags" /v "TelemetryCallsEnabled" /t %dw% /d 0 /f>nul 2>&1
+::
 %ifNdef% NoSecHealth call :BlockUWP sechealth
 call :BlockUWP chxapp
 exit /b
 
 :Services
 %msg% "Disabling the launch of services and drivers..." "Отключение запуска служб и драйверов..."
-for %%s in (Win%df% MDCoreSvc WdNisSvc Sense wscsvc SgrmBroker webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd KslD AppID AppIDSvc applockerfltr) do %rq% "HKLM%scs%\%%~s">nul 2>&1&&%ra% "HKLM%scs%\%%~s" /v "Start" /t %dw% /d 4 /f>nul 2>&1
+for %%s in (Win%df% MDCoreSvc WdNisSvc Sense SgrmBroker webthreatdefsvc webthreatdefusersvc WdNisDrv WdBoot WdFilter SgrmAgent MsSecWfp MsSecFlt MsSecCore wtd KslD AppID AppIDSvc applockerfltr) do %rq% "HKLM%scs%\%%~s">nul 2>&1&&%ra% "HKLM%scs%\%%~s" /v "Start" /t %dw% /d 4 /f>nul 2>&1
 %ifNdef% NoSecHealth (%rq% "HKLM%scs%\SecurityHealthService">nul 2>&1)&&(%ra% "HKLM%scs%\SecurityHealthService" /v "Start" /t %dw% /d 4 /f>nul 2>&1)
+%ifNdef% NoSecHealth (%rq% "HKLM%scs%\wscsvc">nul 2>&1)&&(%ra% "HKLM%scs%\wscsvc" /v "Start" /t %dw% /d 4 /f>nul 2>&1)
 ::
 %rd% "HKLM%smw% NT\CurentVersion\Svchost" /v "WebThreatDefense" /f>nul 2>&1
 exit /b
@@ -1198,6 +1249,7 @@ exit /b
 %ra% "HKLM%smwci%\mpextms.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\MpSigStub.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\MsMpEng.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
+%ra% "HKLM%smwci%\MsMpEngCP.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\MsSense.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\NisSrv.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
 %ra% "HKLM%smwci%\OfflineScannerShell.exe" /v "Debugger" /t %sz% /d "dllhost.exe" /f>nul 2>&1
@@ -1250,7 +1302,9 @@ exit /b %errorlevel%
 %rd% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /f>nul 2>&1
 %rd% "HKCU%smw%\%cv%\Policies\Attachments" /f>nul 2>&1
 %rd% "HKCU%spm%\Edge" /f>nul 2>&1
-for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"') do (
+%ra% "HKCU\Software\Microsoft\Edge\%ss%Enabled" /ve /t %dw%  /d "1" /f>nul 2>&1
+%ra% "HKCU\Software\Microsoft\Edge\%ss%PuaEnabled" /ve /t %dw%  /d "1" /f>nul 2>&1
+for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| %findstr% /R /C:"S-1-5-21-*"') do (
 	%rd% "HKU\%%a%smw% Security Health\State" /v "AppAndBrowser_Edge%ss%Off" /f>nul 2>&1
 	%rd% "HKU\%%a%smw% Security Health\State" /v "AppAndBrowser_Pua%ss%Off" /f>nul 2>&1
 	%rd% "HKU\%%a%smw% Security Health\State" /v "AppAndBrowser_StoreApps%ss%Off" /f>nul 2>&1
@@ -1259,6 +1313,8 @@ for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| findstr /R /C:"S-1-5-21-*"
 	%rd% "HKU\%%a%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" /f>nul 2>&1
 	%rd% "HKU\%%a%smw%\%cv%\Policies\Attachments" /f>nul 2>&1
 	%rd% "HKU\%%a%spm%\Edge" /f>nul 2>&1
+	%ra% "HKU\%%a\Software\Microsoft\Edge\%ss%Enabled" /ve /t %dw%  /d "1" /f>nul 2>&1
+	%ra% "HKU\%%a\Software\Microsoft\Edge\%ss%PuaEnabled" /ve /t %dw%  /d "1" /f>nul 2>&1
 )
 
 call :UnBlockUWP sechealth
@@ -1271,7 +1327,7 @@ exit /b
 set "HidePath=HKLM%smw%\%cv%\Policies\Explorer"
 for /f "tokens=2*" %%a in ('%rq% "%HidePath%" /v "SettingsPageVisibility" 2^>nul') do set "SettingsPageVisibility=%%b"
 %ifNdef% SettingsPageVisibility goto :SkipRestoreVisibility
-echo %SettingsPageVisibility% | find /i "windows%df%er">nul 2>&1||goto :SkipRestoreVisibility
+echo %SettingsPageVisibility% | %find% /i "windows%df%er">nul 2>&1||goto :SkipRestoreVisibility
 set SettingsPageVisibility=%SettingsPageVisibility:windowsdefender;=%
 set SettingsPageVisibility=%SettingsPageVisibility:windowsdefender=%
 if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
@@ -1374,6 +1430,7 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %rd% "HKLM%smwci%\mpextms.exe" /f>nul 2>&1
 %rd% "HKLM%smwci%\MpSigStub.exe" /f>nul 2>&1
 %rd% "HKLM%smwci%\MsMpEng.exe" /v "Debugger" /f>nul 2>&1
+%rd% "HKLM%smwci%\MsMpEngCP.exe" /v "Debugger" /f>nul 2>&1
 %rd% "HKLM%smwci%\MsSense.exe" /v "Debugger" /f>nul 2>&1
 %rd% "HKLM%smwci%\NisSrv.exe" /f>nul 2>&1
 %rd% "HKLM%smwci%\OfflineScannerShell.exe" /f>nul 2>&1
@@ -1461,6 +1518,11 @@ if "%SettingsPageVisibility%"=="hide:" set SettingsPageVisibility=
 %rq% "HKLM%scs%\AppID">nul 2>&1&&%ra% "HKLM%scs%\AppID" /v "Start" /t %dw% /d 3 /f>nul 2>&1
 %rq% "HKLM%scs%\AppIDSvc">nul 2>&1&&%ra% "HKLM%scs%\AppIDSvc" /v "Start" /t %dw% /d 3 /f>nul 2>&1
 %rq% "HKLM%scs%\applockerfltr">nul 2>&1&&%ra% "HKLM%scs%\applockerfltr" /v "Start" /t %dw% /d 3 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "ServiceEnabled" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "NotifyUnsafeApp" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "NotifyPasswordReuse" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "NotifyMalicious" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM%smw%\%cv%\WTDS\Components" /v "CaptureThreatWindow" /t %dw% /d 1 /f>nul 2>&1
 call :UnBlockUWP sechealth
 call :UnBlockUWP chxapp
 if exist "%save%MySecurityDefaults.reg" %reg% import "%save%MySecurityDefaults.reg">nul 2>&1
@@ -1513,8 +1575,10 @@ for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| %finds
 	%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 	%rd% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 )
+chcp 437>nul 2>&1
 %ifNdef% SAFEBOOT_OPTION %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Reset-AppxPackage -Package %UwpName%" >nul 2>&1
 %ifdef% UwpPath %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Add-AppxPackage -%dl%DevelopmentMode -Register '%UwpPath%'" >nul 2>&1
+chcp 65001>nul 2>&1
 exit /b
 
 :WinRE
@@ -1568,4 +1632,299 @@ echo.
 %msg% "Helps reduce the risk of enabling the %df%er during a Windows update" "Помогает снизить риск включения защитника при обновлении Windows"
 echo.
 pause
+exit /b
+
+:Status
+cls
+%msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
+set ON=[31mON[0m
+set OFF=[1;32mOFF[0m
+set DEL=[1;35mDEL[0m
+set OFFRUN=[32mOFF[0m [1;35mRUNNING[0m
+set ONLOCK=[31mON[0m [1;35mLOCKED[0m
+set "defend=[4;36mMicrosoft Defender                                                       [0m "
+set "ssn=[4;36mSmartscreen                                                              [0m "
+set "secb= SecureBoot                                                               "
+%ifNdef% Lang (
+	set "av= Third-party Antivirus: "
+	set "noav= Third-party antivirus is not installed or registered in the security center"
+	set "realtime= Real-time protection                                                     "
+	set "tamper= Tamper protection                                                        "
+	set "smart= Smart App Control                                                        "
+	set "vbs= Virtual based security [Core isolation, Memory integrity]                "
+	set "lsa= Local Security Authority protection                                      "
+	set "cred= Credential Guard                                                         "
+	set "asrr= Attack surface reduction [ASR] rules [Enabled]                          "
+	set "sht= Sheduled tasks [Enabled/Total]                                          "
+	set "conm= Context menu                                                             "
+	set "serv= [4;1mServices [0m[4;37m[[4;31mRunning[4;37m/[4;93mEnabled[4;37m/[4;1;32mDisabled[0m[4;37m/Total]                               [0m"
+	set  "drv= [4;1mDrivers  [0m[4;37m[[4;31mRunning[4;37m/[4;93mEnabled[4;37m/[4;1;32mDisabled[0m[4;37m/Total]                               [0m"
+	set "ssp= Smartscreen parameters [Enabled/Total]                                  "
+	set "ssd= Warning for downloaded files                                             "
+	set "wsec=[4;36mWindows Security                                                         [0m "
+	set "uwpsec= UWP App                                                                  "
+	set "tray= Tray icon                                                                "
+	set "hid= Visible in settings                                                      "
+	set "noti= Notifications                                                            "
+	set "aplk= AppLocker drivers and services [[31mRunning[0m/[93mEnabled[0m/[1;32mDisabled[0m/Total]         "
+) else (
+	set "av= Сторонний антивирус: "
+	set "noav= Сторонний антивирус не установлен или не зарегистрирован в центре безопасности"
+	set "realtime= Защита в реальном времени                                                "
+	set "tamper= Защита от подделки                                                       "
+	set "smart= Интеллектуальное управление приложениями                                 "
+	set "vbs= Безопасность на основе виртуализации [Изоляция ядра, Целостность памяти] "
+	set "lsa= Защита локальной системы безопасности                                    "
+	set "cred= Credential Guard                                                         "
+	set "asrr= Правила сокращения направлений атак ASR [Включено]                      "
+	set "sht= Задачи в планировщике [Включено/Всего]                                  "
+	set "conm= Контекстное меню                                                         "
+	set "serv= [4;1mСлужбы   [0m[4;37m[[4;31mЗапущено[4;37m/[4;93mВключено[4;37m/[4;1;32mВыключено[0m[4;37m/Всего]                            [0m"
+	set  "drv= [4;1mДрайверы [0m[4;37m[[4;31mЗапущено[4;37m/[4;93mВключено[4;37m/[4;1;32mВыключено[0m[4;37m/Всего]                            [0m"
+	set "ssp= Параметры Smartscreen [Включено/Всего]                                  "
+	set "ssd= Предупреждение для скачанных файлов                                      "
+	set "wsec=[4;36mБезопасность Windows                                                     [0m "
+	set "uwpsec= UWP приложение                                                           "
+	set "tray= Значок в трее                                                            "
+	set "hid= Видно в настройках                                                       "
+	set "noti= Уведомления                                                              "
+	set "aplk= AppLocker драйверы и службы [[31mЗапущено[0m/[93mВключено[0m/[1;32mВыключено[0m/Всего]         "
+)
+echo [1;36m%WindowsVersion% %WindowsBuild%[0m
+%msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
+set "ActiveAV="
+chcp 437>nul 2>&1
+for /f "usebackq tokens=*" %%G IN (`%sysdir%\WindowsPowerShell\v1.0\powershell.exe -MTA -NoP -NoL -NonI -EP Bypass -c "Get-WmiObject -ClassName AntiVirusProduct -Namespace root/SecurityCenter2 | Where-Object { ($_.productState -eq 397312 -or $_.productState -eq 266240) -and $_.displayName -ne 'Windows Defender' } | Select-Object -ExpandProperty displayName -First 1"`) do (set "ActiveAV=%%G")
+chcp 65001>nul 2>&1
+%ifdef% ActiveAV (echo %av%[36m%ActiveAV%[0m) else (echo %noav%)
+%msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
+chcp 437>nul 2>&1
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Confirm-SecureBootUEFI"|%find% "True" >nul 2>&1&&set secboot=1||set secboot=
+chcp 65001>nul 2>&1
+%ifdef% secboot (echo %secb%ON) else (echo %secb%OFF)
+%msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
+del /f /q "%pth%%AS%WTDS.txt">nul 2>&1
+if exist "%ProgramFiles%\%wd%\MsMpEng.exe" (set DefExist=1) else (set "DefExist=")
+call :isProcess "MsMpEng.exe"&&set DefRun=1||set DefRun=
+chcp 437>nul 2>&1
+%powershell% -MTA -NoL -NonI -EP Bypass -c Get-MpComputerStatus>"%pth%%AS%status.txt" 2>&1||goto :SkipPSCheck
+chcp 65001>nul 2>&1
+%find% "AntivirusEnabled                 : True" "%pth%%AS%status.txt">nul 2>&1&&set DefOn=1||set DefOn=
+%find% "RealTimeProtectionEnabled        : True" "%pth%%AS%status.txt">nul 2>&1&&set DefReal=1||set DefReal=
+%find% "IsTamperProtected                : True" "%pth%%AS%status.txt">nul 2>&1&&set DefTamper=1||set DefTamper=
+%find% "SmartAppControlState             : On" "%pth%%AS%status.txt">nul 2>&1&&set DefSmart=1||set DefSmart=
+%ifNdef% DefSmart %find% "SmartAppControlState             : Eval" "%pth%%AS%status.txt">nul 2>&1&&set DefSmart=1||set DefSmart=
+set MpStatus=1
+:SkipPSCheck
+%ifdef% MpStatus goto :SkipRegCheck
+(%rq% "HKLM%smwd%" /v "%dl%AntiVirus" 2>nul|%find% "0x1">nul 2>&1)&&set "DefOn="||set DefOn=1
+(%rq% "HKLM%smwd%" /v "%dl%AntiSpyware" 2>nul|%find% "0x1">nul 2>&1)&&set "DefOn="
+(%rq% "HKLM%smwd%\Real-Time Protection" /v "%dl%RealtimeMonitoring" 2>nul|%find% "0x1">nul 2>&1)&&set "DefReal="||set DefReal=1
+(%rq% "HKLM%smwd%\Features" /v "TamperProtection" 2>nul|%find% "0x5">nul 2>&1)&&set "DefTamper=1"||set DefTamper=
+(%rq% "HKLM%smwd%" /v "VerifiedAndReputableTrustModeEnabled" 2>nul|%find% "0x0">nul 2>&1)&&set "DefSmart="||set DefSmart=1
+:SkipRegCheck
+%ifdef% DefExist  (%ifdef% DefRun (%ifdef% DefOn (echo %defend%%ON%) else (echo %defend%%OFFRUN%)) else (echo %defend%%OFF%)) else (echo %defend%%DEL%)
+%ifdef% DefReal   (echo %realtime%%ON%) else (echo %realtime%%OFF%)
+%ifdef% DefTamper (echo %tamper%%ON%) else (echo %tamper%%OFF%)
+%ifdef% DefSmart  (echo %smart%%ON%) else (echo %smart%%OFF%)
+del /f /q "%pth%%AS%status.txt">nul 2>&1
+chcp 65001>nul 2>&1
+%msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
+chcp 437>nul 2>&1
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Get-WmiObject -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard"|%find% "VirtualizationBasedSecurityStatus            : 0">nul 2>&1&&set "DefVBS="||set DefVBS=1
+%bcdedit%|%find% "hypervisorlaunchtype    Auto">nul 2>&1&&set "hyperv= Hypervisor"||set hyperv=
+chcp 65001>nul 2>&1
+%ifNdef% DefVBS (%rq% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" 2>nul|%find% "0x1">nul 2>&1)&&set DefVBS=1||set DefVBS=
+%ifdef% DefVBS (%rq% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" 2>nul|%find% "0x1">nul 2>&1)&&set DefVBSLock=1||set DefVBSLock=
+%ifdef% DefVBS    (%ifdef% DefVBSLock (echo %vbs%%ONLOCK%%hyperv%) else (echo %vbs%%ON%%hyperv%)) else (echo %vbs%%OFF%)
+(%rq% "HKLM%scc%\Lsa" /v "RunAsPPLBoot" 2>nul|%find% "0x2">nul 2>&1)&&set DefLsa=1||set DefLsa=
+(%rq% "HKLM%scc%\Lsa" /v "RunAsPPL" 2>nul|%find% "0x2">nul 2>&1)&&set DefLsa=1
+(%rq% "HKLM%scc%\Lsa" /v "RunAsPPLBoot" 2>nul|%find% "0x1">nul 2>&1)&&set DefLsaLock=1||set DefLsaLock=
+(%rq% "HKLM%scc%\Lsa" /v "RunAsPPL" 2>nul|%find% "0x1">nul 2>&1)&&set DefLsaLock=1
+(%rq% "HKLM%spm%\Windows\System" /v "RunAsPPL" 2>nul|%find% "0x1">nul 2>&1)&&set DefLsaLock=1
+%ifdef% DefLsaLock    (echo %lsa%%ONLOCK%) else (%ifdef% DefLsa (echo %lsa%%ON%) else (echo %lsa%%OFF%))
+(%rq% "HKLM%scc%\CI\State" /v "HVCIEnabled" 2>nul|%find% "0x1">nul 2>&1)&&set DefCred=1||set DefCred=
+(%rq% "HKLM%sccd%\Scenarios\KeyGuard\Status" /v "CredGuardEnabled" 2>nul|%find% "0x1">nul 2>&1)&&set DefCred=1||set DefCred=
+%ifdef% DefCred (%rq% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" 2>nul|%find% "0x1">nul 2>&1)&&set DefCredLock=1||set DefCredLock=
+%ifdef% DefCredLock    (echo %cred%%ONLOCK%) else (%ifdef% DefCred (echo %cred%%ON%) else (echo %cred%%OFF%))
+set /a ASRCount=0
+for /f "tokens=1" %%i in ('%rq% "HKLM%smwd%\%wd% Exploit Guard\ASR\Rules" 2^>nul ^| %find% "0x1"') do set /a ASRCount+=1
+if %ASRCount% gtr 0 (echo %asrr%[[31m%ASRCount%[0m]) else (echo %asrr%[[1;32m0[0m])  
+::-------------------------------------------------------------------------------------
+call :process_services "MDCoreSvc Sense webthreatdefsvc webthreatdefusersvc WinDefend"
+set /p "colored_services_list=" < "%pth%%AS%service_list.tmp"
+del /f /q "%pth%%AS%service_list.tmp">nul 2>&1
+set "summary_services=[%serv_count_running%/%serv_count_enabled%/%serv_count_disabled%/%serv_count_total%]"
+echo %serv%%summary_services%
+%ifdef% colored_services_list echo  %colored_services_list%
+call :process_services "MsSecFlt MsSecWfp WdNisDrv WdNisSvc wtd WdBoot WdFilter MsSecCore KslD"
+set /p "colored_drivers_list=" < "%pth%%AS%service_list.tmp"
+del /f /q "%pth%%AS%service_list.tmp">nul 2>&1
+set "summary_drivers=[%serv_count_running%/%serv_count_enabled%/%serv_count_disabled%/%serv_count_total%]"
+echo %drv%%summary_drivers%
+%ifdef% colored_drivers_list echo  %colored_drivers_list%
+set /a TasksCount=0
+set /a TasksDisabled=0
+%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Cache Maintenance">nul 2>&1&&(set /a TasksCount+=1&(%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Cache Maintenance"|%find% "Disabled">nul 2>&1&&set /a TasksDisabled+=1)&(%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Cache Maintenance"|%find% "Отключено">nul 2>&1&&set /a TasksDisabled+=1))
+%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Cleanup">nul 2>&1&&(set /a TasksCount+=1&(%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Cleanup"|%find% "Disabled">nul 2>&1&&set /a TasksDisabled+=1)&(%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Cleanup"|%find% "Отключено">nul 2>&1&&set /a TasksDisabled+=1))
+%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Scheduled Scan">nul 2>&1&&(set /a TasksCount+=1&(%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Scheduled Scan"|%find% "Disabled">nul 2>&1&&set /a TasksDisabled+=1)&(%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Scheduled Scan"|%find% "Отключено">nul 2>&1&&set /a TasksDisabled+=1))
+%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Verification">nul 2>&1&&(set /a TasksCount+=1&(%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Verification"|%find% "Disabled">nul 2>&1&&set /a TasksDisabled+=1)&(%schtasks% /Query /TN "Microsoft\Windows\%wd%\%wd% Verification"|%find% "Отключено">nul 2>&1&&set /a TasksDisabled+=1))
+%schtasks% /Query /TN "Microsoft\Windows\AppID\%ss%Specific">nul 2>&1&&(set /a TasksCount+=1&(%schtasks% /Query /TN "Microsoft\Windows\AppID\%ss%Specific"|%find% "Disabled">nul 2>&1&&set /a TasksDisabled+=1)&(%schtasks% /Query /TN "Microsoft\Windows\AppID\%ss%Specific"|%find% "Отключено">nul 2>&1&&set /a TasksDisabled+=1))
+set /a TaskEnabled=%TasksCount%-%TasksDisabled%
+if "%TaskEnabled%"=="0" (echo %sht%[[1;32m%TaskEnabled%[0m/%TasksCount%]) else (echo %sht%[[31m%TaskEnabled%[0m/%TasksCount%])
+set ContextCount=0
+%rq% "HKLM%scl%\CLSID\{09A47860-11B0-4DA5-AFA5-26D86198A780}">nul 2>&1&&(%rq% "HKLM%smw%\%cv%\Shell Extensions\Blocked" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}">nul 2>&1||set ContextCount=1)
+if [%ContextCount%] neq [0] (echo %conm%%ON%) else (echo %conm%%OFF%) 
+::-------------------------------------------------------------------------------------
+if exist "%windir%\System32\smartscreen.exe" (set SsExist=1) else (set "SsExist=")
+call :isProcess "smartscreen.exe"&&set SsRun=1||set SsRun=
+%rq% "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32">nul 2>&1&&set SsOn=1||set SsOn=
+%ifdef% SsExist (%ifdef% SsRun (%ifdef% SsOn (echo %ssn%%ON%) else (echo %ssn%%OFFRUN%)) else (echo %ssn%%OFF%)) else (echo %ssn%%DEL%)
+set /a SSCount=0
+%ifNdef% DefSmart (%rq% "HKLM%spm%\Windows\System" /v "Enable%ss%" 2>nul|%find% "0x0">nul 2>&1||(%rq% "HKLM%smw%\%cv%\Explorer" /v "%ss%Enabled" 2>nul|%find% "Off">nul 2>&1||set /a SSCount+=1)) else set /a SSCount+=1
+(%rq% "HKLM%spm%\Edge" /v "%ss%Enabled" 2>nul|find "0x0">nul 2>&1)||((%rq% "HKCU%spm%\Edge" /v "%ss%Enabled" 2>nul|find "0x0">nul 2>&1)||(%rq% "HKCU\Software\Microsoft\Edge\%ss%Enabled" 2>nul|find "0x0">nul 2>&1||set /a SSCount+=1))
+%ifdef% DefSmart set /a SSCount+=1&goto :SkipWTDS
+%rq% "HKLM%smw%\%cv%\WTDS">nul 2>&1||goto :SkipWTDS
+%msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
+del /f /q "%pth%%AS%WTDS.txt">nul 2>&1
+start /MIN %cmd% /c %Script% ti "%sys%:\windows\regedit.exe" /e "%pth%%AS%WTDS.txt" "HKEY_LOCAL_MACHINE%smw%\%cv%\WTDS\Components"
+set /a CheckFileCount=0
+:CheckFileLoop
+if exist "%pth%%AS%WTDS.txt" goto :FileFound
+set /a CheckFileCount+=1
+if %CheckFileCount% geq 10000 goto :EndCheckFile
+goto :CheckFileLoop
+:FileFound
+(type "%pth%%AS%WTDS.txt"|%find% """ServiceEnabled""=dword:00000000">nul 2>&1)||(%rq% "HKLM%spm%\Windows\WTDS\Components" /v "ServiceEnabled" 2>nul|%find% "0x0">nul 2>&1||set /a SSCount+=1)
+:EndCheckFile
+del /f /q "%pth%%AS%WTDS.txt">nul 2>&1
+:SkipWTDS
+(%rq% "HKLM%spmwd%" /v "PUAProtection" 2>nul|%find% "0x0">nul 2>&1)||(%rq% "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\%wd%" /v "PUAProtection" 2>nul|%find% "0x0">nul 2>&1||set /a SSCount+=1)
+(%rq% "HKCU%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" 2>nul|%find% "0x0">nul 2>&1)||set /a SSCount+=1
+if [%SSCount%] gtr [0] (echo %ssp%[[31m%SSCount%[0m/5]) else (echo %ssp%[[1;32m0[0m/5])  
+(%rq% "HKCU%smw%\%cv%\Policies\Attachments" /v "SaveZoneInformation" 2>nul|%find% "0x1">nul 2>&1)&&set "SaveZone="||set SaveZone=1
+%ifdef% SaveZone (echo %ssd%%ON%) else (echo %ssd%%OFF%)   
+::-------------------------------------------------------------------------------------
+%sc% query SecurityHealthService>nul 2>&1&&(%sc% qc SecurityHealthService|%find% "DISABLED">nul 2>&1&&set "wsecon="||set "wsecon=1")||(set "wsecon=")
+%ifdef% wsecon (echo %wsec%%ON%) else (echo %wsec%%OFF%)
+call :process_services "SecurityHealthService wscsvc SgrmAgent SgrmBroker"
+set /p "colored_wsec_list=" < "%pth%%AS%service_list.tmp"
+del /f /q "%pth%%AS%service_list.tmp">nul 2>&1
+set "summary_wsec=[%serv_count_running%/%serv_count_enabled%/%serv_count_disabled%/%serv_count_total%]"
+echo %serv%%summary_wsec%
+%ifdef% colored_wsec_list echo  %colored_wsec_list%
+%msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
+chcp 437>nul 2>&1
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Get-AppXPackage -AllUsers|Format-Table"|%find% "SecHealth" >nul 2>&1&&set wsecUWP=1||set wsecUWP=
+chcp 65001>nul 2>&1
+%ifNdef% wsecUWP goto :SkipUWPinRegistry
+set "UWP=sechealth"
+set "UwpName="
+%rq% "%uwpsearch%" /f "*%UWP%*" /k>nul 2>&1&&for /f "tokens=2" %%a in ('%rq% "%uwpsearch%" /f "*%UWP%*" /k^|^|goto :EndSearchUWP') do (set "UwpName=%%~nxa"&goto EndSearchUWP)
+:EndSearchUWP
+%ifNdef% UwpName goto :SkipUWPinRegistry
+%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deprovisioned\%UwpName%">nul 2>&1&&set "wsecUWP="
+%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\S-1-5-18\%UwpName%">nul 2>&1&&set "wsecUWP="
+for /f "tokens=*" %%a in ('%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore" ^| %findstr% /R /C:"S-1-5-21-*"') do (
+	%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%">nul 2>&1&&set "wsecUWP="
+	%rq% "HKLM%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%">nul 2>&1&&set "wsecUWP="
+)
+:SkipUWPinRegistry
+%ifdef% wsecUWP (echo %uwpsec%%ON%) else (echo %uwpsec%%OFF%)
+(%rq% "HKLM%spmwd%\UX Configuration" /v "UILockdown" 2>nul|%find% "0x1">nul 2>&1)&&set "wsecui="||set "wsecui=1"
+(%rq% "HKLM%smw%\%cv%\Policies\Explorer" /v "SettingsPageVisibility" 2>nul|%find% "windows%df%er">nul 2>&1)&&set "wsecui="
+%rq% "HKLM%smw%\%cv%\Run" /v "SecurityHealth" /f>nul 2>&1&&set "wsectray=1"||set "wsectray="
+call :isProcess "SecurityHealthSystray.exe"&&set "wsectray=1"
+(%rq% "HKLM%spmwd% Security Center\Systray" /v "HideSystray" 2>nul|%find% "0x1">nul 2>&1)&&set "wsectray="
+(%rq% "HKCU%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /v "Enabled" 2>nul|%find% "0x0">nul 2>&1)&&set "wsecui="||set "wsecnoti=1"
+(%rq% "HKLM%spmwd% Security Center\Notifications" /v "%dl%Notifications" 2>nul|%find% "0x1">nul 2>&1)&&set "wsecnoti="
+%ifdef% wsecui (echo %hid%%ON%) else (echo %hid%%OFF%)
+%ifdef% wsectray (echo %tray%%ON%) else (echo %tray%%OFF%)
+%ifdef% wsecnoti (echo %noti%%ON%) else (echo %noti%%OFF%)
+call :process_services "applockerfltr AppIDSvc applockerfltr"
+del /f /q "%pth%%AS%service_list.tmp">nul 2>&1
+set "summary_aplk=[[31m%serv_count_running%[0m/[93m%serv_count_enabled%[0m/[1;32m%serv_count_disabled%[0m/%serv_count_total%]"
+echo %aplk%%summary_aplk%
+::-------------------------------------------------------------------------------------
+cls
+echo [1;36m%WindowsVersion% %WindowsBuild%[0m
+%ifdef% ActiveAV (echo %av%[36m%ActiveAV%[0m) else (echo [1;30m%noav%[0m)
+%ifdef% secboot (echo %secb%ON) else (echo %secb%OFF)
+%ifdef% DefExist  (%ifdef% DefRun (%ifdef% DefOn (echo %defend%%ON%) else (echo %defend%%OFFRUN%)) else (echo %defend%%OFF%)) else (echo %defend%%DEL%)
+%ifdef% DefExist (%ifdef% DefReal   (echo %realtime%%ON%) else (echo %realtime%%OFF%)) else (%ifdef% DefReal   (echo [1;30m%realtime%ON[0m) else (echo [1;30m%realtime%OFF[0m))
+%ifdef% DefExist (%ifdef% DefTamper (echo %tamper%%ON%) else (echo %tamper%%OFF%)) else (%ifdef% DefTamper (echo [1;30m%tamper%ON[0m) else (echo [1;30m%tamper%OFF[0m))
+%ifdef% DefSmart  (echo %smart%%ON%) else (echo %smart%%OFF%)
+%ifdef% DefVBS    (%ifdef% DefVBSLock (echo %vbs%%ONLOCK%%hyperv%) else (echo %vbs%%ON%%hyperv%)) else (echo %vbs%%OFF%)
+%ifdef% DefLsaLock    (echo %lsa%%ONLOCK%) else (%ifdef% DefLsa (echo %lsa%%ON%) else (echo %lsa%%OFF%))
+%ifdef% DefCred (%rq% "HKLM%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" 2>nul|%find% "0x1">nul 2>&1)&&set DefCredLock=1||set DefCredLock=
+%ifdef% DefCredLock    (echo %cred%%ONLOCK%) else (%ifdef% DefCred (echo %cred%%ON%) else (echo %cred%%OFF%))
+%ifdef% DefReal   (if %ASRCount% gtr 0 (echo %asrr%[[31m%ASRCount%[0m]) else (echo %asrr%[[1;32m0[0m])) else (echo [1;30m%asrr%[%ASRCount%][0m) 
+%ifdef% DefExist (if "%TaskEnabled%"=="0" (echo %sht%[[1;32m%TaskEnabled%[0m/%TasksCount%]) else (echo %sht%[[31m%TaskEnabled%[0m/%TasksCount%])) else (echo [1;30m%sht%[%TaskEnabled%/%TasksCount%][0m)
+if [%ContextCount%] neq [0] (echo %conm%%ON%) else (echo %conm%%OFF%) 
+echo %serv%%summary_services%
+%ifdef% colored_services_list echo  %colored_services_list%
+echo %drv%%summary_drivers%
+%ifdef% colored_drivers_list echo  %colored_drivers_list%
+%ifdef% SsExist (%ifdef% SsRun (%ifdef% SsOn (echo %ssn%%ON%) else (echo %ssn%%OFFRUN%)) else (echo %ssn%%OFF%)) else (echo %ssn%%DEL%)
+%ifNdef% SsExist set "SsOn="
+%ifdef% SsOn (if [%SSCount%] gtr [0] (echo %ssp%[[31m%SSCount%[0m/5]) else (echo %ssp%[[1;32m0[0m/5])) else (echo [1;30m%ssp%[%SSCount%/5][0m)
+%ifdef% SaveZone (echo %ssd%%ON%) else (echo %ssd%%OFF%) 
+%ifdef% wsecon (echo %wsec%%ON%) else (echo %wsec%%OFF%)
+echo %serv%%summary_wsec%
+%ifdef% colored_wsec_list echo  %colored_wsec_list%
+%ifdef% wsecUWP (echo %uwpsec%%ON%) else (echo %uwpsec%%OFF%)
+%ifdef% wsecui (echo %hid%%ON%) else (echo %hid%%OFF%)
+%ifdef% wsecon (%ifdef% wsectray (echo %tray%%ON%) else (echo %tray%%OFF%)) else (%ifdef% wsectray (echo [1;30m%tray%ON[0m) else (echo [1;30m%tray%OFF[0m))
+%ifdef% wsecon (%ifdef% wsecnoti (echo %noti%%ON%) else (echo %noti%%OFF%)) else (%ifdef% wsecnoti (echo [1;30m%noti%ON[0m) else (echo [1;30m%noti%OFF[0m))  
+echo %aplk%%summary_aplk%
+%msg% "[4;1;30mPress any key to return...                                                        [0m" "[4;1;30mНажмите любую клавишу для возврата...                                             [0m"
+pause>nul 2>&1
+::-------------------------------------------------------------------------------------
+goto :BEGIN
+exit
+
+:isProcess
+%tasklist% /NH /FI "IMAGENAME eq %~1" 2>nul | %find% /I "%~1">nul 2>&1
+exit /b %errorlevel%
+
+:process_services
+set "service_list=%~1"
+set /a serv_count_running=0
+set /a serv_count_enabled=0
+set /a serv_count_disabled=0
+set /a serv_count_total=0
+> "%pth%%AS%service_list.tmp" (
+    for %%s in (%service_list%) do (
+        call :process_service "%%s"
+    )
+)
+if %serv_count_running%==0 if %serv_count_enabled%==0 if %serv_count_disabled%==0 set serv_count_running=[1;35m%serv_count_running%[0m&set serv_count_enabled=[1;35m%serv_count_enabled%[0m&set serv_count_disabled=[1;35m%serv_count_disabled%[0m&exit /b
+if not %serv_count_running%==0 (set serv_count_running=[31m%serv_count_running%[0m) else (set serv_count_running=[1;30m%serv_count_running%[0m)
+if not %serv_count_enabled%==0 (set serv_count_enabled=[93m%serv_count_enabled%[0m) else (set serv_count_enabled=[1;30m%serv_count_enabled%[0m)
+if not %serv_count_disabled%==0 (set serv_count_disabled=[1;32m%serv_count_disabled%[0m) else (set serv_count_disabled=[1;30m%serv_count_disabled%[0m)
+exit /b 
+
+:process_service
+set "service_name=%~1"
+%sc% query "%service_name%" >nul 2>nul
+if errorlevel 1 exit /b
+set /a serv_count_total=serv_count_total+1
+for /f "tokens=2 delims=:" %%i in ('%sc% query "%service_name%" ^| find "STATE"') do (
+    for %%j in (%%i) do set "svc_state=%%j"
+)
+for /f "tokens=2 delims=:" %%i in ('%sc% qc "%service_name%" ^| find "START_TYPE"') do (
+    for %%j in (%%i) do set "svc_start_type=%%j"
+)
+if "%svc_state%"=="RUNNING" (
+    <nul set /p "=[31m%service_name%[0m "
+    set /a serv_count_running=serv_count_running+1
+    exit /b
+)
+if "%svc_start_type%"=="DISABLED" (
+    <nul set /p "=[1;32m%service_name%[0m "
+    set /a serv_count_disabled=serv_count_disabled+1
+) else (
+    <nul set /p "=[93m%service_name%[0m "
+    set /a serv_count_enabled=serv_count_enabled+1
+)
 exit /b
