@@ -17,8 +17,8 @@
 ::set NoPending=1
 
 ::#############################################################################
-cls&chcp 65001>nul 2>&1&color 0F
-set "asv=ver 1.8.5"
+cls&chcp 65001 >nul 2>&1&color 0F
+set "asv=ver 1.8.6"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -265,16 +265,16 @@ call :Reboot2Normal
 ::#############################################################################
 
 :2LangMsg
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 %ifdef% Lang (echo %~2) else (echo %~1)
 exit /b
 
 :2LangErr
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 (%ifdef% Lang (echo %~2) else (echo %~1))&pause>nul 2>&1&exit
 
 :2LangErrNoPause
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 (%ifdef% Lang (echo %~2) else (echo %~1))&exit /b 1
 
 :CheckTrusted
@@ -360,9 +360,9 @@ set safetry=0
 if %safetry% gtr 5 call :SafeFail
 set /a safetry+=1
 %rq% "HKLM\%smwd%\%wd% Exploit Guard\ASR\Rules" /v "33ddedf1-c6e0-47cb-833e-de6133960387" >nul 2>&1&&(
-	chcp 437>nul 2>&1
+	chcp 437 >nul 2>&1
 	%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%sp% -AttackSurfaceReductionRules_Ids 33ddedf1-c6e0-47cb-833e-de6133960387 -AttackSurfaceReductionRules_Actions Disabled">nul 2>&1
-	chcp 65001>nul 2>&1
+	chcp 65001 >nul 2>&1
 	%rd% "HKLM\%smwd%\%wd% Exploit Guard\ASR\Rules" /v "33ddedf1-c6e0-47cb-833e-de6133960387" /f >nul 2>&1
 )
 %bcdedit% /set {%guid%} safeboot minimal
@@ -414,9 +414,9 @@ exit
 %sc% start "TrustedInstaller">nul 2>&1
 del /f /q "%pth%%ASN%TI.ps1">nul 2>&1
 set "RunAsTrustedInstaller=%~1"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "$null|Out-File -FilePath '%pth%%ASN%TI.ps1' -Encoding UTF8">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 echo $AppFullPath=[System.Environment]::GetEnvironmentVariable('RunAsTrustedInstaller')>>"%pth%%ASN%TI.ps1"
 echo [string]$GetTokenAPI=@'>>"%pth%%ASN%TI.ps1"
 echo using System;using System.ServiceProcess;using System.Diagnostics;using System.Runtime.InteropServices;using System.Security.Principal;namespace WinAPI{internal static class WinBase{[StructLayout(LayoutKind.Sequential)]internal struct SECURITY_ATTRIBUTES{public int nLength;public IntPtr lpSecurityDeScriptor;public bool bInheritHandle;}[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct STARTUPINFO{public Int32 cb;public string lpReserved;public string lpDesktop;public string lpTitle;public uint dwX;public uint dwY;public uint dwXSize;public uint dwYSize;public uint dwXCountChars;public uint dwYCountChars;public uint dwFillAttribute;public uint dwFlags;public Int16 wShowWindow;public Int16 cbReserved2;public IntPtr lpReserved2;public IntPtr hStdInput;public IntPtr hStdOutput;public IntPtr hStdError;}[StructLayout(LayoutKind.Sequential)]internal struct PROCESS_INFORMATION{public IntPtr hProcess;public IntPtr hThread;public uint dwProcessId;public uint dwThreadId;}}internal static class WinNT{public enum TOKEN_TYPE{TokenPrimary=1,TokenImpersonation}public enum SECURITY_IMPERSONATION_LEVEL{SecurityAnonymous,SecurityIdentification,SecurityImpersonation,SecurityDelegation}[StructLayout(LayoutKind.Sequential,Pack=1)]internal struct TokPriv1Luid{public uint PrivilegeCount;public long Luid;public UInt32 Attributes;}}internal static class Advapi32{public const int SE_PRIVILEGE_ENABLED=0x00000002;public const uint CREATE_NO_WINDOW=0x08000000;public const uint CREATE_NEW_CONSOLE=0x00000010;public const uint CREATE_UNICODE_ENVIRONMENT=0x00000400;public const UInt32 STANDARD_RIGHTS_REQUIRED=0x000F0000;public const UInt32 STANDARD_RIGHTS_READ=0x00020000;public const UInt32 TOKEN_ASSIGN_PRIMARY=0x0001;public const UInt32 TOKEN_DUPLICATE=0x0002;public const UInt32 TOKEN_IMPERSONATE=0x0004;public const UInt32 TOKEN_QUERY=0x0008;public const UInt32 TOKEN_QUERY_SOURCE=0x0010;public const UInt32 TOKEN_ADJUST_PRIVILEGES=0x0020;public const UInt32 TOKEN_ADJUST_GROUPS=0x0040;public const UInt32 TOKEN_ADJUST_DEFAULT=0x0080;public const UInt32 TOKEN_ADJUST_SESSIONID=0x0100;public const UInt32 TOKEN_READ=(STANDARD_RIGHTS_READ^|TOKEN_QUERY);public const UInt32 TOKEN_ALL_ACCESS=(STANDARD_RIGHTS_REQUIRED^|TOKEN_ASSIGN_PRIMARY^|TOKEN_DUPLICATE^|TOKEN_IMPERSONATE^|TOKEN_QUERY^|TOKEN_QUERY_SOURCE^|TOKEN_ADJUST_PRIVILEGES^|TOKEN_ADJUST_GROUPS^|TOKEN_ADJUST_DEFAULT^|TOKEN_ADJUST_SESSIONID);[DllImport("advapi32.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]public static extern bool OpenProcessToken(IntPtr ProcessHandle,UInt32 DesiredAccess,out IntPtr TokenHandle);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public extern static bool DuplicateTokenEx(IntPtr hExistingToken,uint dwDesiredAccess,IntPtr lpTokenAttributes,WinNT.SECURITY_IMPERSONATION_LEVEL ImpersonationLevel,WinNT.TOKEN_TYPE TokenType,out IntPtr phNewToken);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]internal static extern bool LookupPrivilegeValue(string lpSystemName,string lpName,ref long lpLuid);[DllImport("advapi32.dll",SetLastError=true)]internal static extern bool AdjustTokenPrivileges(IntPtr TokenHandle,bool %dl%AllPrivileges,ref WinNT.TokPriv1Luid NewState,UInt32 Zero,IntPtr Null1,IntPtr Null2);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Unicode)]public static extern bool CreateProcessAsUserW(IntPtr hToken,string lpApplicationName,string lpCommandLine,IntPtr lpProcessAttributes,IntPtr lpThreadAttributes,bool bInheritHandles,uint dwCreationFlags,IntPtr lpEnvironment,string lpCurrentDirectory,ref WinBase.STARTUPINFO lpStartupInfo,out WinBase.PROCESS_INFORMATION lpProcessInformation);[DllImport("advapi32.dll",SetLastError=true)]public static extern bool SetTokenInformation(IntPtr TokenHandle,uint TokenInformationClass,ref IntPtr TokenInformation,int TokenInformationLength);[DllImport("advapi32.dll",SetLastError=true,CharSet=CharSet.Auto)]public static extern bool RevertToSelf();}internal static class Kernel32{[Flags]public enum ProcessAccessFlags:uint{All=0x001F0FFF}[DllImport("kernel32.dll",SetLastError=true)]>>"%pth%%ASN%TI.ps1"
@@ -434,9 +434,9 @@ echo if ($Global:Token_TI -eq [IntPtr]::Zero ){$Exit=$true; Return}>>"%pth%%ASN%
 echo [WinAPI.ProcessConfig+StructOut] $StructOut=New-Object -TypeName WinAPI.ProcessConfig+StructOut>>"%pth%%ASN%TI.ps1"
 echo $StructOut=[WinAPI.ProcessConfig]::CreateProcessWithTokenSys($Global:Token_TI, $AppFullPath)>>"%pth%%ASN%TI.ps1"
 echo return $StructOut.ExitCode>>"%pth%%ASN%TI.ps1"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%ASN%TI.ps1"
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 set "trusted=%errorlevel%">nul 2>&1
 del /f /q "%pth%%ASN%TI.ps1">nul 2>&1
 exit /b %trusted%
@@ -444,9 +444,9 @@ exit /b %trusted%
 :Backup
 if exist "%save%MySecurityDefaults.reg" goto :EndBackup
 %msg% "Creating a recovery point if recovery is enabled..." "Создание точки восстановления, если восстановление включено..."
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Checkpoint-Computer -Description '%AS% Script Backup %date% %time%' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 call :RegSave
 md "%save%GroupPolicy">nul 2>&1
 md "%save%GroupPolicy\Machine">nul 2>&1
@@ -485,9 +485,9 @@ exit /b
 :BackupReg
 set out="%pth%%ASN%Backup.ps1"
 del /f/q %out%>nul 2>&1
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "$null|Out-File -FilePath '%out%' -Encoding UTF8">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 echo $I="%pth%%~1">>%out%
 echo $F="%pth%%~2">>%out%
 echo $O=New-Object System.Text.StringBuilder>>%out%
@@ -528,9 +528,9 @@ echo else{if(-not $O.ToString().Contains("[-$S]")){[void]$O.AppendLine("[-$S]")>
 echo [void]$O.AppendLine("")}}}>>%out%
 echo finally{if($regKey){$regKey.Close()}}}>>%out%
 echo [System.IO.File]::WriteAllText($F, $O.ToString(), [System.Text.Encoding]::Unicode)>>%out%
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -f %out%>nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 del /f/q %out%>nul 2>&1
 exit /b
 
@@ -1066,9 +1066,9 @@ exit /b
 
 :ApplyPol
 del /f /q "%pth%%ASN%pol.ps1">nul 2>&1
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "$null|Out-File -FilePath '%pth%%ASN%pol.ps1' -Encoding UTF8">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 echo $csharpCode=@'>>"%pth%%ASN%pol.ps1"
 echo using System;using System.Collections.Generic;using System.IO;using System.Text; public class PolRec{public string Key;public string ValueName;public uint Type;public byte[] Data;} public static class PolHandler{ public static List^<PolRec^> Read(string f){ var l=new List^<PolRec^>(); if(!File.Exists(f)^|^|new FileInfo(f).Length^<8)return l; try{ using(var br=new BinaryReader(File.OpenRead(f),Encoding.Unicode)){ if(br.ReadUInt32()!=0x67655250^|^|br.ReadUInt32()!=1)return l; while(br.BaseStream.Position^<br.BaseStream.Length){ if(br.ReadChar()!='[')continue; var r=new PolRec{Key=RS(br)}; if(br.ReadChar()!=';')break; r.ValueName=RS(br); if(br.ReadChar()!=';')break; r.Type=br.ReadUInt32(); if(br.ReadChar()!=';')break; uint sz=br.ReadUInt32(); if(br.ReadChar()!=';')break; if(br.BaseStream.Position+sz^>br.BaseStream.Length)break; r.Data=br.ReadBytes((int)sz); if(br.ReadChar()!=']')break; l.Add(r); } } }catch{} return l; } public static void Write(string f,ICollection^<PolRec^> d){ Directory.CreateDirectory(Path.GetDirectoryName(f)); using(var bw=new BinaryWriter(File.Open(f,FileMode.Create),Encoding.Unicode)){ bw.Write((uint)0x67655250);bw.Write((uint)1); foreach(var r in d){ bw.Write('[');SS(bw,r.Key);bw.Write(';');SS(bw,r.ValueName);bw.Write(';'); bw.Write(r.Type);bw.Write(';');bw.Write((uint)r.Data.Length);bw.Write(';'); bw.Write(r.Data);bw.Write(']'); } } } private static string RS(BinaryReader br){var sb=new StringBuilder();char c;while((c=br.ReadChar())!=0)sb.Append(c);return sb.ToString();} private static void SS(BinaryWriter bw,string v){bw.Write(v.ToCharArray());bw.Write((char)0);} }>>"%pth%%ASN%pol.ps1"
 echo '@>>"%pth%%ASN%pol.ps1"
@@ -1106,95 +1106,95 @@ exit /b
 %ra% "HKLM\%spmwd%" /v "AllowFastServiceStartup" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spmwd%" /v "%dl%LocalAdminMerge" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM\%spmwd%" /v "%dl%RoutinelyTakingAction" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM\%spmwd%" /v "AllowFastServiceStartup" /t %dw% /d 0>nul 2>&1
+%ra% "HKLM\%spmwd%" /v "AllowFastServiceStartup" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spmwd%" /v "PUAProtection" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spmwd%" /v "RandomizeScheduleTaskTimes" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spmwd%" /v "ServiceKeepAlive" /t %dw% /d 0 /f>nul 2>&1
-%ra% "HKLM\%spmwd%\Device Control" /v "DefaultEnforcement" /t %dw% /d 1>nul 2>&1
+%ra% "HKLM\%spmwd%\Device Control" /v "DefaultEnforcement" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM\%spmwd%\Exclusions" /v "%dl%AutoExclusions" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM\%spmwd%\Features" /v "DeviceControlEnabled" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Features" /v "PassiveRemediation" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Features" /v "TDTFeatureEnabled" /t %dw% /d 2>nul 2>&1
-%ra% "HKLM\%spmwd%\MpEngine" /v "%dl%GradualRelease" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\MpEngine" /v "EnableFileHashComputation" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\MpEngine" /v "MpBafsExtendedTimeout" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\MpEngine" /v "MpCloudBlockLevel" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\MpEngine" /v "MpEnablePus" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\NIS" /v "%dl%DatagramProcessing" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\NIS" /v "%dl%ProtocolRecognition" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\NIS" /v "AllowSwitchToAsyncInspection" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\NIS" /v "EnableConvertWarnToBlock" /t %dw% /d 0>nul 2>&1
+%ra% "HKLM\%spmwd%\Features" /v "DeviceControlEnabled" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Features" /v "PassiveRemediation" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Features" /v "TDTFeatureEnabled" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\MpEngine" /v "%dl%GradualRelease" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\MpEngine" /v "EnableFileHashComputation" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\MpEngine" /v "MpBafsExtendedTimeout" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\MpEngine" /v "MpCloudBlockLevel" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\MpEngine" /v "MpEnablePus" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\NIS" /v "%dl%DatagramProcessing" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\NIS" /v "%dl%ProtocolRecognition" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\NIS" /v "AllowSwitchToAsyncInspection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\NIS" /v "EnableConvertWarnToBlock" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spmwd%\NIS\Consumers\IPS" /v "%dl%ProtocolRecognition" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM\%spmwd%\NIS\Consumers\IPS" /v "%dl%SignatureRetirement" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM\%spmwd%\NIS\Consumers\IPS" /v "ThrottleDetectionEventsRate" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spmwd%\Policy Manager" /v "%dl%ScanningNetworkFiles" /t %dw% /d 1 /f>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%AsyncScanOnOpen" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%BehaviorMonitoring" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%InformationProtectionControl" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%IntrusionPreventionSystem" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%IOAVProtection" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%OnAccessProtection" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%RawWriteNotification" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%RealtimeMonitoring" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%ScanOnRealtimeEnable" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%ScriptScanning" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "IOAVMaxSize" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%BehaviorMonitoring" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%IntrusionPreventionSystem" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%IOAVProtection" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%OnAccessProtection" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%RealtimeMonitoring" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverrideRealtimeScanDirection" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "OobeEnableRtpAndSigUpdate" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Real-Time Protection" /v "RealtimeScanDirection" /t %dw% /d 2>nul 2>&1
-%ra% "HKLM\%spmwd%\Spynet" /v "%dl%BlockAtFirstSeen" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Spynet" /v "LocalSettingOverrideSpynetReporting" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Spynet" /v "SpynetReporting" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Spynet" /v "SubmitSamplesConsent" /t %dw% /d 2>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "%dl%ScanOnUpdate" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "%dl%ScheduledSignatureUpdateOnBattery" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "%dl%UpdateOnStartupWithoutEngine" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "ForceUpdateFromMU" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "MeteredConnectionUpdates" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "RealtimeSignatureDelivery" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "ScheduleTime" /t %dw% /d 1440>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "SharedSignatureRootUpdateAtScheduledTimeOnly" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "Signature%dl%Notification" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "SignatureUpdateCatchupInterval" /t %dw% /d 2>nul 2>&1
-%ra% "HKLM\%spmwd%\Signature Updates" /v "UpdateOnStartUp" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Remediation\Behavioral Network Blocks\Brute Force Protection" /v "BruteForceProtectionConfiguredState" /t %dw% /d 4>nul 2>&1
-%ra% "HKLM\%spmwd%\Remediation\Behavioral Network Blocks\Remote Encryption Protection" /v "RemoteEncryptionProtectionConfiguredState" /t %dw% /d 4>nul 2>&1
-%ra% "HKLM\%spmwd%\Reporting" /v "%dl%EnhancedNotifications" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Reporting" /v "%dl%GenericRePorts" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Reporting" /v "EnableDynamicSignatureDroppedEventReporting" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Reporting" /v "WppTracingComponents" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Reporting" /v "WppTracingLevel" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%ArchiveScanning" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%CatchupFullScan" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%CatchupQuickScan" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%EmailScanning" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%Heuristics" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%PackedExeScanning" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%RemovableDriveScanning" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%ReparsePointScanning" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%RestorePoint" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%ScanningMappedNetworkDrivesForFullScan" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "%dl%ScanningNetworkFiles" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "AllowPause" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "ArchiveMaxDepth" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "ArchiveMaxSize" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "AvgCPULoadFactor" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "CheckForSignaturesBeforeRunningScan" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideAvgCPULoadFactor" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideScanParameters" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideScheduleDay" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideScheduleQuickScanTime" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideScheduleTime" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "LowCpuPriority" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "PurgeItemsAfterDelay" /t %dw% /d 30>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "QuickScanIncludeExclusions" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "ScanOnlyIfIdle" /t %dw% /d 1>nul 2>&1
-%ra% "HKLM\%spmwd%\Scan" /v "ThrottleForScheduledScanOnly" /t %dw% /d 0>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%AsyncScanOnOpen" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%BehaviorMonitoring" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%InformationProtectionControl" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%IntrusionPreventionSystem" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%IOAVProtection" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%OnAccessProtection" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%RawWriteNotification" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%RealtimeMonitoring" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%ScanOnRealtimeEnable" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "%dl%ScriptScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "IOAVMaxSize" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%BehaviorMonitoring" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%IntrusionPreventionSystem" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%IOAVProtection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%OnAccessProtection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverride%dl%RealtimeMonitoring" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "LocalSettingOverrideRealtimeScanDirection" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "OobeEnableRtpAndSigUpdate" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Real-Time Protection" /v "RealtimeScanDirection" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Spynet" /v "%dl%BlockAtFirstSeen" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Spynet" /v "LocalSettingOverrideSpynetReporting" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Spynet" /v "SpynetReporting" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Spynet" /v "SubmitSamplesConsent" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "%dl%ScanOnUpdate" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "%dl%ScheduledSignatureUpdateOnBattery" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "%dl%UpdateOnStartupWithoutEngine" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "ForceUpdateFromMU" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "MeteredConnectionUpdates" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "RealtimeSignatureDelivery" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "ScheduleTime" /t %dw% /d 1440 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "SharedSignatureRootUpdateAtScheduledTimeOnly" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "Signature%dl%Notification" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "SignatureUpdateCatchupInterval" /t %dw% /d 2 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Signature Updates" /v "UpdateOnStartUp" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Remediation\Behavioral Network Blocks\Brute Force Protection" /v "BruteForceProtectionConfiguredState" /t %dw% /d 4 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Remediation\Behavioral Network Blocks\Remote Encryption Protection" /v "RemoteEncryptionProtectionConfiguredState" /t %dw% /d 4 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Reporting" /v "%dl%EnhancedNotifications" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Reporting" /v "%dl%GenericRePorts" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Reporting" /v "EnableDynamicSignatureDroppedEventReporting" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Reporting" /v "WppTracingComponents" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Reporting" /v "WppTracingLevel" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%ArchiveScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%CatchupFullScan" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%CatchupQuickScan" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%EmailScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%Heuristics" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%PackedExeScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%RemovableDriveScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%ReparsePointScanning" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%RestorePoint" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%ScanningMappedNetworkDrivesForFullScan" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "%dl%ScanningNetworkFiles" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "AllowPause" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "ArchiveMaxDepth" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "ArchiveMaxSize" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "AvgCPULoadFactor" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "CheckForSignaturesBeforeRunningScan" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideAvgCPULoadFactor" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideScanParameters" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideScheduleDay" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideScheduleQuickScanTime" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "LocalSettingOverrideScheduleTime" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "LowCpuPriority" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "PurgeItemsAfterDelay" /t %dw% /d 30 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "QuickScanIncludeExclusions" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "ScanOnlyIfIdle" /t %dw% /d 1 /f>nul 2>&1
+%ra% "HKLM\%spmwd%\Scan" /v "ThrottleForScheduledScanOnly" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spmwd%\%wd% Exploit Guard\ASR" /v "ExploitGuard_ASR_Rules" /t %dw% /d 0 /f>nul 2>&1
 %rd% "HKLM\%spmwd%\%wd% Exploit Guard\ASR" /v "ExploitGuard_ASR_ASROnlyPerRuleExclusions" /f>nul 2>&1
 %ra% "HKLM\%spmwd%\%wd% Exploit Guard\Controlled Folder Access" /v "EnableControlledFolderAccess" /t %dw% /d 0 /f>nul 2>&1
@@ -1203,9 +1203,9 @@ exit /b
 ::
 %ra% "HKLM\%spm%\Edge" /v "%ss%Enabled" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spm%\Edge" /v "PreventOverride" /t %dw% /d 0 /f>nul 2>&1
-%ra% "HKLM\%spm%\MicrosoftEdge\PhishingFilter" /v "EnabledV9" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spm%\MicrosoftEdge\PhishingFilter" /v "PreventOverride" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spm%\MicrosoftEdge\PhishingFilter" /v "PreventOverrideAppRepUnknown" /t %dw% /d 0>nul 2>&1
+%ra% "HKLM\%spm%\MicrosoftEdge\PhishingFilter" /v "EnabledV9" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spm%\MicrosoftEdge\PhishingFilter" /v "PreventOverride" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spm%\MicrosoftEdge\PhishingFilter" /v "PreventOverrideAppRepUnknown" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spm%\Windows\System" /v "Enable%ss%" /t %dw% /d 0 /f>nul 2>&1
 %rd% "HKLM\%spm%\Windows\System" /v "Shell%ss%Level" /f>nul 2>&1
 %ra% "HKLM\%spmwd%\%ss%" /v "ConfigureAppInstallControlEnabled" /t %dw% /d 1 /f>nul 2>&1
@@ -1214,17 +1214,17 @@ exit /b
 %ra% "HKLM\%spm%\Windows\WTDS\Components" /v "NotifyUnsafeApp" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spm%\Windows\WTDS\Components" /v "NotifyMalicious" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKLM\%spm%\Windows\WTDS\Components" /v "NotifyPasswordReuse" /t %dw% /d 0 /f>nul 2>&1
-%ra% "HKLM\%spm%\Windows\WTDS\Components" /v "CaptureThreatWindow" /t %dw% /d 0>nul 2>&1
+%ra% "HKLM\%spm%\Windows\WTDS\Components" /v "CaptureThreatWindow" /t %dw% /d 0 /f>nul 2>&1
 ::
-%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "DeployConfigCIPolicy" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "HVCIMATRequired" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "HypervisorEnforcedCodeIntegrity" /t %dw% /d 0>nul 2>&1
-%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "LsaCfgFlags" /t %dw% /d 0>nul 2>&1
+%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "DeployConfigCIPolicy" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "HVCIMATRequired" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "HypervisorEnforcedCodeIntegrity" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spm%\Windows\DeviceGuard" /v "LsaCfgFlags" /t %dw% /d 0 /f>nul 2>&1
 %rd% "HKLM\%spm%\Windows\DeviceGuard" /v "ConfigCIPolicyFilePath" /f>nul 2>&1
 %rd% "HKLM\%spm%\Windows\DeviceGuard" /v "ConfigureKernelShadowStacksLaunch" /f>nul 2>&1
 %rd% "HKLM\%spm%\Windows\DeviceGuard" /v "MachineIdentityIsolation" /f>nul 2>&1
-%ra% "HKLM\%spm%\Windows\System" /v "RunAsPPL" /t %dw% /d 0>nul 2>&1
+%ra% "HKLM\%spm%\Windows\System" /v "RunAsPPL" /t %dw% /d 0 /f>nul 2>&1
 ::
 %ifNdef% NoSecHealth (
 	%ra% "HKLM\%spmwd% Security Center\Account protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1	
@@ -1235,8 +1235,8 @@ exit /b
 	%ra% "HKLM\%spmwd% Security Center\Notifications" /v "%dl%Notifications" /t %dw% /d 1 /f>nul 2>&1
 	%ra% "HKLM\%spmwd% Security Center\Systray" /v "HideSystray" /t %dw% /d 1 /f>nul 2>&1
 	%ra% "HKLM\%spmwd%\UX Configuration" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
-	%ra% "HKLM\%spmwd%\UX Configuration" /v "Notification_Suppress" /t %dw% /d 1>nul 2>&1
-	%ra% "HKLM\%spmwd%\UX Configuration" /v "SuppressRebootNotification" /t %dw% /d 1>nul 2>&1
+	%ra% "HKLM\%spmwd%\UX Configuration" /v "Notification_Suppress" /t %dw% /d 1 /f>nul 2>&1
+	%ra% "HKLM\%spmwd%\UX Configuration" /v "SuppressRebootNotification" /t %dw% /d 1 /f>nul 2>&1
 )
 %ifdef% Registry %ra% "HKLM\%spmwd% Security Center\App and Browser protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
 %ifdef% Registry %ra% "HKLM\%spmwd% Security Center\Virus and threat protection" /v "UILockdown" /t %dw% /d 1 /f>nul 2>&1
@@ -1244,7 +1244,7 @@ exit /b
 %ra% "HKLM\%spm%\MRT" /v "DontOfferThroughWUAU" /t %dw% /d 1 /f>nul 2>&1
 %ra% "HKLM\%spm%\MRT" /v "DontReportInfectionInformation" /t %dw% /d 1 /f>nul 2>&1
 ::
-%ra% "HKLM\%smw%\%cv%\Policies\System\Audit" /v "ProcessCreationIncludeCmdLine_Enabled" /t %dw% /d 0>nul 2>&1
+%ra% "HKLM\%smw%\%cv%\Policies\System\Audit" /v "ProcessCreationIncludeCmdLine_Enabled" /t %dw% /d 0 /f>nul 2>&1
 ::
 %ra% "HKLM\System\CurrentControlSet\Policies\EarlyLaunch" /v "DriverLoadPolicy" /t %dw% /d 7>nul 2>&1
 ::
@@ -1264,18 +1264,18 @@ call :MachinePolList
 set PolWork=Add
 set "PolIn=%pth%%ASN%user.txt"
 set "PolOut=%sysdir%\GroupPolicy\User\Registry.pol"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%ASN%pol.ps1">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 set "PolIn=%pth%%ASN%machine.txt"
 set "PolOut=%sysdir%\GroupPolicy\Machine\Registry.pol"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%ASN%pol.ps1">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 del /f /q "%pth%%ASN%pol.ps1">nul 2>&1
 del /f /q "%pth%%ASN%user.txt">nul 2>&1
 del /f /q "%pth%%ASN%machine.txt">nul 2>&1
-if exist "%gpupdate%" %ra% "HKLM\%smw%\%cv%\RunOnce" /v "*gpupdate" /t %sz% /d "%gpupdate% /force" >nul 2>&1
+if exist "%gpupdate%" %ra% "HKLM\%smw%\%cv%\RunOnce" /v "*gpupdate" /t %sz% /d "%gpupdate% /force" /f>nul 2>&1
 exit /b
 
 :TasksDisable
@@ -1303,9 +1303,9 @@ set "ASRd="
 set /a ASRn=0
 for /f "tokens=1" %%i in ('%rq% "HKLM\%smwd%\%wd% Exploit Guard\ASR\Rules" 2^>nul ^| %findstr% /B /C:"    "') do call :addrule "%%i"
 if %ASRn% gtr 0 %msg% "Disabling attack surface reduction rules ASR..." "Отключение правил сокращения направлений атак ASR..."
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 if %ASRn% gtr 0 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "%sp% -AttackSurfaceReductionRules_Ids %ASRs% -AttackSurfaceReductionRules_Actions %ASRd%">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 exit /b
 
 :addrule
@@ -1825,14 +1825,14 @@ call :MachinePolList
 set PolWork=Del
 set "PolIn=%pth%%ASN%user.txt"
 set "PolOut=%sysdir%\GroupPolicy\User\Registry.pol"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%ASN%pol.ps1">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 set "PolIn=%pth%%ASN%machine.txt"
 set "PolOut=%sysdir%\GroupPolicy\Machine\Registry.pol"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -f "%pth%%ASN%pol.ps1">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 del /f /q "%pth%%ASN%pol.ps1">nul 2>&1
 del /f /q "%pth%%ASN%user.txt">nul 2>&1
 del /f /q "%pth%%ASN%machine.txt">nul 2>&1
@@ -1889,10 +1889,10 @@ for /f "tokens=*" %%a in ('%rq% "HKLM\%smw%\%cv%\Appx\AppxAllUserStore" ^| %find
 	%rd% "HKLM\%smw%\%cv%\Appx\AppxAllUserStore\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 	%rd% "HKLM\%smw%\%cv%\Appx\AppxAllUserStore\Deleted\EndOfLife\%%~nxa\%UwpName%" /f >nul 2>&1
 )
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %ifNdef% SAFEBOOT_OPTION %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Reset-AppxPackage -Package %UwpName%" >nul 2>&1
 %ifdef% UwpPath %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Add-AppxPackage -%dl%DevelopmentMode -Register '%UwpPath%'" >nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 exit /b
 
 :WinRE
@@ -2004,25 +2004,35 @@ set "secb= SecureBoot                                                           
 	set "noti= Уведомления                                                              "
 	set "aplk= AppLocker драйверы и службы                                             "
 )
+%ifdef% WindowsVersion goto :SkipWinVer
+%msg% "Determining the Windows version..." "Определение версии Windows..."
+for /f "tokens=4 delims= " %%v in ('ver') do set "win=%%v"
+for /f "tokens=3 delims=." %%v in ('echo  %win%') do set /a "build=%%v"
+for /f "tokens=1 delims=." %%v in ('echo  %win%') do set /a "win=%%v"
+for /f "tokens=4" %%a in ('ver') do set "WindowsBuild=%%a"
+set "WindowsBuild=%WindowsBuild:~5,-1%"
+for /f "tokens=2*" %%a in ('%rq% "HKLM\%smw% NT\%cv%" /v ProductName') do set "WindowsVersion=%%b"
+if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
+:SkipWinVer
 %msg% " [1;36m%WindowsVersion% %WindowsBuild%[0m [Services/Drivers: [31mRunning [93mEnabled [1;32mDisabled[0m]" " [1;36m%WindowsVersion% %WindowsBuild%[0m [Службы/Драйверы: [31mЗапущено [93mВключено [1;32mВыключено[0m]"
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
 set "ActiveAV="
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 for /f "usebackq tokens=*" %%G IN (`%sysdir%\WindowsPowerShell\v1.0\powershell.exe -MTA -NoP -NoL -NonI -EP Bypass -c "Get-WmiObject -ClassName AntiVirusProduct -Namespace root/SecurityCenter2 | Where-Object { ($_.productState -eq 397312 -or $_.productState -eq 266240) -and $_.displayName -ne 'Windows Defender' } | Select-Object -ExpandProperty displayName -First 1"`) do (set "ActiveAV=%%G")
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 %ifdef% ActiveAV (echo %av%[36m%ActiveAV%[0m) else (echo %noav%)
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Confirm-SecureBootUEFI"|%find% "True" >nul 2>&1&&set secboot=1||set secboot=
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 %ifdef% secboot (echo %secb%ON) else (echo %secb%OFF)
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
 del /f /q "%pth%%AS%WTDS.txt">nul 2>&1
 if exist "%ProgramFiles%\%wd%\MsMpEng.exe" (set DefExist=1) else (set "DefExist=")
 call :isProcess "MsMpEng.exe"&&set DefRun=1||set DefRun=
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoL -NonI -EP Bypass -c Get-MpComputerStatus>"%pth%%AS%status.txt" 2>&1||goto :SkipPSCheck
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 %find% "AntivirusEnabled                 : True" "%pth%%AS%status.txt">nul 2>&1&&set DefOn=1||set DefOn=
 %find% "RealTimeProtectionEnabled        : True" "%pth%%AS%status.txt">nul 2>&1&&set DefReal=1||set DefReal=
 %find% "IsTamperProtected                : True" "%pth%%AS%status.txt">nul 2>&1&&set DefTamper=1||set DefTamper=
@@ -2042,12 +2052,12 @@ set MpStatus=1
 %ifdef% DefTamper (echo %tamper%%ON%) else (echo %tamper%%OFF%)
 %ifdef% DefSmart  (echo %smart%%ON%) else (echo %smart%%OFF%)
 del /f /q "%pth%%AS%status.txt">nul 2>&1
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Get-WmiObject -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard"|%find% "VirtualizationBasedSecurityStatus            : 0">nul 2>&1&&set "DefVBS="||set DefVBS=1
 %bcdedit%|%find% "hypervisorlaunchtype    Auto">nul 2>&1&&set "hyperv= Hypervisor"||set hyperv=
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 %ifNdef% DefVBS (%rq% "HKLM\%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" 2>nul|%find% "0x1">nul 2>&1)&&set DefVBS=1||set DefVBS=
 %ifdef% DefVBS (%rq% "HKLM\%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" 2>nul|%find% "0x1">nul 2>&1)&&set DefVBSLock=1||set DefVBSLock=
 %ifdef% DefVBS    (%ifdef% DefVBSLock (echo %vbs%%ONLOCK%%hyperv%) else (echo %vbs%%ON%%hyperv%)) else (echo %vbs%%OFF%)
@@ -2128,9 +2138,9 @@ set "summary_wsec=[%serv_count_running%/%serv_count_enabled%/%serv_count_disable
 echo %serv%%summary_wsec%
 %ifdef% colored_wsec_list echo  %colored_wsec_list%
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
-chcp 437>nul 2>&1
+chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Get-AppXPackage -AllUsers|Format-Table"|%find% "SecHealth" >nul 2>&1&&set wsecUWP=1||set wsecUWP=
-chcp 65001>nul 2>&1
+chcp 65001 >nul 2>&1
 %ifNdef% wsecUWP goto :SkipUWPinRegistry
 set "UWP=sechealth"
 set "UwpName="
