@@ -18,7 +18,7 @@
 
 ::#############################################################################
 cls&chcp 65001 >nul 2>&1&color 0F
-set "asv=ver 1.8.6"
+set "asv=ver 1.8.7"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -237,7 +237,7 @@ cls
 call :CheckTrusted||call :LoadUsers
 call :CheckTrusted||call :RestoreCurrentUser
 %sc% query wdFilter|%find% /i "RUNNING" >nul 2>&1 && %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
-call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit)
+call :CheckTrusted||(call :TrustedRun "%Script%" %args%&&exit)
 call :Restore
 call :Reboot2Normal
 exit
@@ -255,7 +255,7 @@ call :LoadUsers
 %ifNdef% SAFEBOOT_OPTION call :Reboot2Safe
 call :LoadUsers
 call :WorkUsers
-cls&call :CheckTrusted||(call :TrustedRun "%Script% %args%"&&exit&cls)
+cls&call :CheckTrusted||(call :TrustedRun "%Script%" %args%&&exit&cls)
 %ifdef% Policies call :Policies
 %ifdef% Registry call :Registry
 %ifdef% Registry call :ASRdel
@@ -413,7 +413,7 @@ exit
 %sc% config "TrustedInstaller" start= demand>nul 2>&1
 %sc% start "TrustedInstaller">nul 2>&1
 del /f /q "%pth%%ASN%TI.ps1">nul 2>&1
-set "RunAsTrustedInstaller=%~1"
+set "RunAsTrustedInstaller=%~1 %~2 %~3 %~4 %~5 %~6 %~7 %~8 %~9"
 chcp 437 >nul 2>&1
 %powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "$null|Out-File -FilePath '%pth%%ASN%TI.ps1' -Encoding UTF8">nul 2>&1
 chcp 65001 >nul 2>&1
@@ -445,8 +445,7 @@ exit /b %trusted%
 if exist "%save%MySecurityDefaults.reg" goto :EndBackup
 %msg% "Creating a recovery point if recovery is enabled..." "Создание точки восстановления, если восстановление включено..."
 chcp 437 >nul 2>&1
-%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Checkpoint-Computer -Description '%AS% Script Backup %date% %time%' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&echo OK||%msg% "Skip" "Пропуск"
-chcp 65001 >nul 2>&1
+%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Checkpoint-Computer -Description '%AS% Script Backup %date% %time%' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue"&&(chcp 65001 >nul 2>&1&echo OK)||(chcp 65001 >nul 2>&1&%msg% "Skip" "Пропуск")
 call :RegSave
 md "%save%GroupPolicy">nul 2>&1
 md "%save%GroupPolicy\Machine">nul 2>&1
@@ -2027,7 +2026,7 @@ chcp 437 >nul 2>&1
 chcp 65001 >nul 2>&1
 %ifdef% secboot (echo %secb%ON) else (echo %secb%OFF)
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
-del /f /q "%pth%%AS%WTDS.txt">nul 2>&1
+del /f /q "%tmp%%AS%WTDS.txt">nul 2>&1
 if exist "%ProgramFiles%\%wd%\MsMpEng.exe" (set DefExist=1) else (set "DefExist=")
 call :isProcess "MsMpEng.exe"&&set DefRun=1||set DefRun=
 chcp 437 >nul 2>&1
@@ -2041,11 +2040,11 @@ chcp 65001 >nul 2>&1
 set MpStatus=1
 :SkipPSCheck
 %ifdef% MpStatus goto :SkipRegCheck
-(%rq% "HKLM\%smwd%" /v "%dl%AntiVirus" 2>nul|%find% "0x1">nul 2>&1)&&set "DefOn="||set DefOn=1
-(%rq% "HKLM\%smwd%" /v "%dl%AntiSpyware" 2>nul|%find% "0x1">nul 2>&1)&&set "DefOn="
-(%rq% "HKLM\%smwd%\Real-Time Protection" /v "%dl%RealtimeMonitoring" 2>nul|%find% "0x1">nul 2>&1)&&set "DefReal="||set DefReal=1
-(%rq% "HKLM\%smwd%\Features" /v "TamperProtection" 2>nul|%find% "0x5">nul 2>&1)&&set "DefTamper=1"||set DefTamper=
-(%rq% "HKLM\%smwd%" /v "VerifiedAndReputableTrustModeEnabled" 2>nul|%find% "0x0">nul 2>&1)&&set "DefSmart="||set DefSmart=1
+(%rq% "HKLM\%smwd%">nul 2>&1)&&((%rq% "HKLM\%smwd%" /v "%dl%AntiVirus" 2>nul|%find% "0x1">nul 2>&1)&&set "DefOn="||set DefOn=1)||set "DefOn="
+(%rq% "HKLM\%smwd%">nul 2>&1)&&((%rq% "HKLM\%smwd%" /v "%dl%AntiSpyware" 2>nul|%find% "0x1">nul 2>&1)&&set "DefOn=")||set "DefOn="
+(%rq% "HKLM\%smwd%">nul 2>&1)&&((%rq% "HKLM\%smwd%\Real-Time Protection" /v "%dl%RealtimeMonitoring" 2>nul|%find% "0x1">nul 2>&1)&&set "DefReal="||set DefReal=1)||set "DefOn="
+(%rq% "HKLM\%smwd%">nul 2>&1)&&((%rq% "HKLM\%smwd%\Features" /v "TamperProtection" 2>nul|%find% "0x5">nul 2>&1)&&set "DefTamper=1"||set DefTamper=)||set "DefOn="
+(%rq% "HKLM\%smwd%" /v "VerifiedAndReputableTrustModeEnabled">nul 2>&1)&&((%rq% "HKLM\%smwd%" /v "VerifiedAndReputableTrustModeEnabled" 2>nul|%find% "0x0">nul 2>&1)&&set "DefSmart="||set DefSmart=1)||set "DefSmart="
 :SkipRegCheck
 %ifdef% DefExist  (%ifdef% DefRun (%ifdef% DefOn (echo %defend%%ON%) else (echo %defend%%OFFRUN%)) else (echo %defend%%OFF%)) else (echo %defend%%DEL%)
 %ifdef% DefReal   (echo %realtime%%ON%) else (echo %realtime%%OFF%)
@@ -2067,8 +2066,8 @@ chcp 65001 >nul 2>&1
 (%rq% "HKLM\%scc%\Lsa" /v "RunAsPPL" 2>nul|%find% "0x1">nul 2>&1)&&set DefLsaLock=1
 (%rq% "HKLM\%spm%\Windows\System" /v "RunAsPPL" 2>nul|%find% "0x1">nul 2>&1)&&set DefLsaLock=1
 %ifdef% DefLsaLock    (echo %lsa%%ONLOCK%) else (%ifdef% DefLsa (echo %lsa%%ON%) else (echo %lsa%%OFF%))
-(%rq% "HKLM\%scc%\CI\State" /v "HVCIEnabled" 2>nul|%find% "0x1">nul 2>&1)&&set DefCred=1||set DefCred=
-(%rq% "HKLM\%sccd%\Scenarios\KeyGuard\Status" /v "CredGuardEnabled" 2>nul|%find% "0x1">nul 2>&1)&&set DefCred=1||set DefCred=
+(%rq% "HKLM\%scc%\CI\State">nul 2>&1)&&((%rq% "HKLM\%scc%\CI\State" /v "HVCIEnabled" 2>nul|%find% "0x1">nul 2>&1)&&set DefCred=1||set DefCred=)||set DefCred=
+(%rq% "HKLM\%sccd%\Scenarios\KeyGuard\Status">nul 2>&1)&&((%rq% "HKLM\%sccd%\Scenarios\KeyGuard\Status" /v "CredGuardEnabled" 2>nul|%find% "0x1">nul 2>&1)&&set DefCred=1||set DefCred=)||set DefCred=
 %ifdef% DefCred (%rq% "HKLM\%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" 2>nul|%find% "0x1">nul 2>&1)&&set DefCredLock=1||set DefCredLock=
 %ifdef% DefCredLock    (echo %cred%%ONLOCK%) else (%ifdef% DefCred (echo %cred%%ON%) else (echo %cred%%OFF%))
 set /a ASRCount=0
@@ -2110,18 +2109,19 @@ set /a SSCount=0
 %ifdef% DefSmart set /a SSCount+=1&goto :SkipWTDS
 %rq% "HKLM\%smw%\%cv%\WTDS">nul 2>&1||goto :SkipWTDS
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
-del /f /q "%pth%%AS%WTDS.txt">nul 2>&1
-start /MIN %cmd% /c %Script% ti "%sys%:\windows\regedit.exe" /e "%pth%%AS%WTDS.txt" "HKEY_LOCAL_MACHINE\%smw%\%cv%\WTDS\Components"
+del /f /q "%tmp%%AS%WTDS.txt">nul 2>&1
+(%rq% "HKLM\%smw%\%cv%\WTDS">nul 2>&1)||goto :SkipWTDS
+start /MIN call "%Script%" ti "%sys%:\windows\regedit.exe" /e "%tmp%%AS%WTDS.txt" "HKEY_LOCAL_MACHINE\%smw%\%cv%\WTDS"
 set /a CheckFileCount=0
 :CheckFileLoop
-if exist "%pth%%AS%WTDS.txt" goto :FileFound
+if exist "%tmp%%AS%WTDS.txt" goto :FileFound
 set /a CheckFileCount+=1
 if %CheckFileCount% geq 10000 goto :EndCheckFile
 goto :CheckFileLoop
 :FileFound
-(type "%pth%%AS%WTDS.txt"|%find% """ServiceEnabled""=dword:00000000">nul 2>&1)||(%rq% "HKLM\%spm%\Windows\WTDS\Components" /v "ServiceEnabled" 2>nul|%find% "0x0">nul 2>&1||set /a SSCount+=1)
+(type "%tmp%%AS%WTDS.txt"|%find% """ServiceEnabled""=dword:00000000">nul 2>&1)||(%rq% "HKLM\%spm%\Windows\WTDS\Components" /v "ServiceEnabled" 2>nul|%find% "0x0">nul 2>&1||set /a SSCount+=1)
 :EndCheckFile
-del /f /q "%pth%%AS%WTDS.txt">nul 2>&1
+del /f /q "%tmp%%AS%WTDS.txt">nul 2>&1
 :SkipWTDS
 (%rq% "HKLM\%spmwd%" /v "PUAProtection" 2>nul|%find% "0x0">nul 2>&1)||(%rq% "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\%wd%" /v "PUAProtection" 2>nul|%find% "0x0">nul 2>&1||set /a SSCount+=1)
 (%rq% "HKCU\%smw%\%cv%\AppHost" /v "EnableWebContentEvaluation" 2>nul|%find% "0x0">nul 2>&1)||set /a SSCount+=1
