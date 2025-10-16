@@ -92,9 +92,13 @@ to disable backup of your settings
 
 to disable warning before reboot
 
-`set NoSecHealth=1`
+`set NotDisableSecHealth=1`
 
 if you don't want to disable the Security app
+
+`set NotDisableWscsvc=1`
+
+if you don't want to disable the Security Center service 
 
 Only the assignment of the variable is checked, the value is not checked.
 
