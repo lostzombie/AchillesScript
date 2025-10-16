@@ -41,7 +41,7 @@ Just run it and select the appropriate item:
 > [!NOTE]
 > Legally. Documented. Incomplete.
 >
-> Only known group policies are applied through the registry.
+> Only known group policies are applied through the registry and .pol files
 >
 > Drivers, services, and background processes are active but do not perform any actions.
 ---
