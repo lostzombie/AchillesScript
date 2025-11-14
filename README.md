@@ -8,7 +8,7 @@
 
 # Achilles' Script
 
-Disable Windows Defender and Security
+Disable Microsoft Windows Defender, Security app, Smartscreen, completely without remove and broke Windows image integrity
 
 **WIN+R**
 
