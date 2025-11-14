@@ -24,7 +24,7 @@
 
 ::#############################################################################
 cls&chcp 65001 >nul 2>&1&color 0F
-set "asv=ver 1.9.5"
+set "asv=ver 1.9.6"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -158,9 +158,9 @@ set REBOOT_PENDING=
 %rd% %ASR% /f >nul 2>&1
 %ifNdef% arg1 if exist "%pth%hkcu.txt" del /f /q "%pth%hkcu.txt">nul 2>&1
 if "%arg1%"=="apply" (
-	%ifdef% arg2 for %%i in (1 2 3 4 6 7 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
+	%ifdef% arg2 for %%i in (1 2 3 4 6 policies setting services block) do if [%arg2%]==[%%i] set "isValidArg=%%i"
 	%ifNdef% isValidArg %errn% "Invalid command line arguments %args%" "Недопустимые аргументы командной строки %args%"
-	%ifdef% arg2 for %%i in (1 2 3 4 6 7) do if [%arg2%]==[%%i] call :Menu%%i
+	%ifdef% arg2 for %%i in (1 2 3 4 6) do if [%arg2%]==[%%i] call :Menu%%i
 	if [%arg2%]==[policies] set Policies=1
 	if [%arg2%]==[setting]  set Registry=1
 	if [%arg2%]==[services] set Services=1
@@ -214,9 +214,9 @@ if [%build%] gtr [22000] set WindowsVersion=%WindowsVersion:10=11%
 :BEGIN
 set Item=
 call :Screen
-%ifNdef% Lang (choice /C 123456789XХхЧч /N /M "Enter menu item number using your keyboard:") else (choice /C 123456789XХхЧч /N /M "Введите номер пункта меню используя клавиатуру:")
+%ifNdef% Lang (choice /C 123456789X /N /M "Enter menu item number using your keyboard:") else (choice /C 123456789X /N /M "Введите номер пункта меню используя клавиатуру:")
 set "Item=%errorlevel%"
-if %Item% gtr 9 exit
+if %Item% gtr 10 exit
 call :Menu%Item%
 
 :Menu1
@@ -261,7 +261,7 @@ call :Header
 echo.
 %msg% " [X] Back" " [X] Назад"
 echo.
-%ifNdef% Lang (choice /C 1234XХхЧч /N /M "Enter menu item number using your keyboard:") else (choice /C 1234XХхЧч /N /M "Введите номер пункта меню используя клавиатуру:")
+%ifNdef% Lang (choice /C 1234X /N /M "Enter menu item number using your keyboard:") else (choice /C 1234X /N /M "Введите номер пункта меню используя клавиатуру:")
 set "Item=%errorlevel%"
 if [%Item%] == [1] %shutdown% /r /fw /t 3 /c "Reboot to UEFI"&%timeout% /t 4&exit
 if [%Item%] == [2] cls&call :WinRE&exit 
@@ -281,7 +281,7 @@ echo  [3] regedit.exe
 echo.
 %msg% " [X] Back" " [X] Назад"
 echo.
-%ifNdef% Lang (choice /C 123XХхЧч /N /M "Enter menu item number using your keyboard:") else (choice /C 123XХхЧч /N /M "Введите номер пункта меню используя клавиатуру:")
+%ifNdef% Lang (choice /C 123X /N /M "Enter menu item number using your keyboard:") else (choice /C 123X /N /M "Введите номер пункта меню используя клавиатуру:")
 set "Item=%errorlevel%"
 if [%Item%] == [1] start "" "%cmd%" /c "^"%Script%^" ti ^"%cmd%^""
 if [%Item%] == [2] start "" "%cmd%" /c "^"%Script%^" ti powershell.exe -MTA -NoP -NoL -NonI -EP Bypass"
@@ -1436,11 +1436,15 @@ exit /b
 %regsvr32% /u "%sysdir%\ieapfltr.dll" /s>nul 2>&1
 %regsvr32% /u "%sysdir%\ThreatResponseEngine.dll" /s>nul 2>&1
 %regsvr32% /u "%sysdir%\webthreatdefsvc.dll" /s>nul 2>&1
-%ifNdef% NotDisableSecHealth (
-	%regsvr32% /u "%sysdir%\SecurityHealthAgent.dll" /s>nul 2>&1
-	%regsvr32% /u "%sysdir%\SecurityHealthProxyStub.dll" /s>nul 2>&1
-	%ifNdef% NotDisableWscsvc %regsvr32% /u "%sysdir%\SecurityCenterBrokerPS.dll" /s>nul 2>&1
+%ifNdef% NotDisableSecHealth goto :SkipHealthDll
+%regsvr32% /u "%sysdir%\SecurityHealthAgent.dll" /s>nul 2>&1
+%regsvr32% /u "%sysdir%\SecurityHealthProxyStub.dll" /s>nul 2>&1
+for /d %%D in ("%sysdir%\SecurityHealth\*") do (
+    %regsvr32% /u "%%D\SecurityHealthAgent.dll">nul 2>&1
+	%regsvr32% /u "%%D\SecurityHealthProxyStub.dll">nul 2>&1
 )
+%ifNdef% NotDisableWscsvc %regsvr32% /u "%sysdir%\SecurityCenterBrokerPS.dll" /s>nul 2>&1
+:SkipHealthDll
 %regsvr% /u "%syswow%\%ss%ps.dll" /s>nul 2>&1
 %regsvr% /u "%syswow%\ieapfltr.dll" /s>nul 2>&1
 ::
@@ -1722,9 +1726,13 @@ exit /b %errorlevel%
 %regsvr% /s "%syswow%\ieapfltr.dll">nul 2>&1
 %regsvr32% /s "%sysdir%\ThreatResponseEngine.dll">nul 2>&1
 %regsvr32% /s "%sysdir%\webthreatdefsvc.dll">nul 2>&1
+%regsvr32% /s "%sysdir%\SecurityCenterBrokerPS.dll">nul 2>&1
 %regsvr32% /s "%sysdir%\SecurityHealthAgent.dll">nul 2>&1
 %regsvr32% /s "%sysdir%\SecurityHealthProxyStub.dll">nul 2>&1
-%regsvr32% /s "%sysdir%\SecurityCenterBrokerPS.dll">nul 2>&1
+for /d %%D in ("%sysdir%\SecurityHealth\*") do (
+    %regsvr32% /s "%%D\SecurityHealthAgent.dll">nul 2>&1
+	%regsvr32% /s "%%D\SecurityHealthProxyStub.dll">nul 2>&1
+)
 %schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Cache Maintenance" /%el%>nul 2>&1
 %schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Cleanup" /%el%>nul 2>&1
 %schtasks% /Change /TN "Microsoft\Windows\%wd%\%wd% Scheduled Scan" /%el%>nul 2>&1
@@ -2067,7 +2075,7 @@ set winre=
 for /f "delims=" %%i in ('%reagentc% /info ^| %findstr% /i "%el%d"') do (if not errorlevel 1 (set winre=1))
 %ifNdef% winre %reagentc% /enable>nul 2>&1
 for /f "delims=" %%i in ('%reagentc% /info ^| %findstr% /i "%el%d"') do (if not errorlevel 1 (set winre=1))
-%ifNdef% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутсвует Среда восстановления Windows или её невозвможно включить"&exit /b
+%ifNdef% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутствует Среда восстановления Windows или её невозвможно включить"&exit /b
 %reagentc% /boottore>nul 2>&1
 manage-bde -protectors %sys%: -%dl% -rebootcount 2
 %msg% "The computer will now reboot into Windows Recovery Environment" "Компьютер сейчас перезагрузиться в Среду восстановления Windows"
