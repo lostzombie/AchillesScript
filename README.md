@@ -1,7 +1,8 @@
 <img align="right" src="Media/AchillesScript.png" alt="Achilles' Script" width='150'>
 
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/lostzombie/AchillesScript/total?style=for-the-badge&color=blue)
-
+![Windows 11 25h2](https://img.shields.io/badge/windows_11_25h2-compatible-teal?style=for-the-badge)
+![Bypass](https://img.shields.io/badge/Microsoft_Defender-bypass-green?style=for-the-badge)
 <br>
 <br>
 <br>
