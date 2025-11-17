@@ -23,9 +23,9 @@ cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 
 ---
 
-## 🖥 Terminal User Interface
+## 🖥 Text User Interface
   
-<img src="Media/tui_en.png" alt="Achilles' Script TUI En" width='683'>
+<img src="Media/tui_en.png" alt="Achilles' Script TUI En" width='682'>
 
 Execute the command from the header or download [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/releases/latest/download/AchillesScript.cmd)
 
