@@ -1,6 +1,6 @@
 # Ахиллесов скрипт
 
-Отключение Защитника Windows и Безопасности
+Отключение Защитника Windows, приложения Безопасность, Smartscreen, полностью, не удаляя и не нарушая целостность образа Windows
 
 **WIN+R**
 
@@ -12,7 +12,7 @@ cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 
 ## 🖥 Интерфейс
   
-<img src="Media/tui_ru.png" alt="Achilles' Script TUI Ru" width='619'>
+<img src="Media/tui_ru.png" alt="Achilles' Script TUI Ru" width='682'>
 
 Выполните комманду из заголовка или скачайте [AchillesScript.cmd](https://github.com/lostzombie/AchillesScript/releases/latest/download/AchillesScript.cmd)
 
