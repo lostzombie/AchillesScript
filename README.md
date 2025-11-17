@@ -3,6 +3,8 @@
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/lostzombie/AchillesScript/total?style=for-the-badge&color=blue)
 ![Windows 11 25h2](https://img.shields.io/badge/windows_11_25h2-compatible-teal?style=for-the-badge)
 ![Bypass](https://img.shields.io/badge/Microsoft_Defender-bypass-green?style=for-the-badge)
+
+[VirusTotal](https://www.virustotal.com/gui/file/64e72b5d837f6b0a9b90dc16892d1bff6b77cd5a6ce1a4d53d2a204366ec3ac2?nocache=1)
 <br>
 <br>
 <br>
