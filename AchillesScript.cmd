@@ -40,7 +40,8 @@
 
 ::#############################################################################
 cls&chcp 65001 >nul 2>&1&color 0F&mode 85,30
-set "asv=ver 2.0.0"
+set "curver=2.5.0"
+set "asv=ver %curver%"
 set AS=Achilles
 set "ifdef=if defined"
 set "ifNdef=if not defined"
@@ -55,7 +56,7 @@ for %%i in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
     )
 )
 :SysFound
-set "sysdir=%sys%:\windows\system32"
+%ifNdef% sysdir set "sysdir=%sys%:\windows\system32"
 set "syswow=%sys%:\windows\SysWOW64"
 set "cmd=%sysdir%\cmd.exe"
 set "reg=%sysdir%\reg.exe"
@@ -87,6 +88,8 @@ set "tk=%sysdir%\taskkill.exe"
 set "gpupdate=%sysdir%\gpupdate.exe"
 set "tasklist=%sysdir%\tasklist.exe"
 set "mountvol=%sysdir%\mountvol.exe"
+set "manage-bde=%sysdir%\manage-bde.exe"
+set "curl=%sysdir%\curl.exe"
 set "Script=%~dpnx0"
 set ScriptPS=\"%~dpnx0\"
 set ASR="HKLM\Software\%AS%Script"
@@ -328,7 +331,7 @@ call :Header
 %msg% "[36m────────────────────────────────────────────────────────────────────────────┘[0m" "[36m─────────────────────────────────────────────────────────────────────────────┘[0m"
 %ifNdef% Lang (choice /C 1234X /N /M "Enter menu item number using your keyboard:") else (choice /C 1234X /N /M "Введите номер пункта меню используя клавиатуру:")
 set "SubItem=%errorlevel%"
-if [%SubItem%] == [1] %shutdown% /r /fw /t 3 /c "Reboot to UEFI"&%timeout% /t 4&exit
+if [%SubItem%] == [1] %ifNdef% SAFEBOOT_OPTION (%shutdown% /r /fw /t 3 /c "Reboot to UEFI"&%timeout% /t 4&exit) else (cls&%msg% "You cannot reboot into UEFI from Safe Mode" "Нельзя перезагрузиться в UEFI из безопасного режима"&echo.&pause&goto :Menu7)
 if [%SubItem%] == [2] cls&call :WinRE&exit 
 if [%SubItem%] == [3] cls&call :Reboot2Safe only
 if [%SubItem%] == [4] %shutdown% /r /f /t 3 /c "Reboot"&%timeout% /t 4&exit
@@ -355,10 +358,57 @@ if %SubItem% gtr 3 goto :BEGIN
 goto :Menu8
 
 :Menu9
-cls
+del /f /q "%~dp0latest.json" >nul 2>&1
+del /f /q "%~dp0script.tmp"  >nul 2>&1
+set SubItem=
+call :Header
+%msg% "[36m────────────────────────────────────────────────────────────────────────────┐[0m" "[36m─────────────────────────────────────────────────────────────────────────────┐[0m"
+%msg% " [1;34m[1][0m Update Script                                                          [36m│[0m" " [1;34m[1][0m Обновить скрипт                                                         [36m│[0m"
+%msg% " [1;34m[2][0m Open readme.md on GitHub                                               [36m│[0m" " [1;34m[2][0m Открыть readme.md на GitHub                                             [36m│[0m"
+%msg% " [1;34m[3][0m Short Help                                                             [36m│[0m" " [1;34m[3][0m Краткая справка                                                         [36m│[0m"
+%msg% "[36m────────────────────────────────────────────────────────────────────────────┤[0m" "[36m─────────────────────────────────────────────────────────────────────────────┤[0m"
+%msg% " [1;35m[X][0m Back                                                                   [36m│[0m" " [1;35m[X][0m Назад                                                                   [36m│[0m"
+%msg% "[36m────────────────────────────────────────────────────────────────────────────┘[0m" "[36m─────────────────────────────────────────────────────────────────────────────┘[0m"
+%ifNdef% Lang (choice /C 123X /N /M "Enter menu item number using your keyboard:") else (choice /C 123X /N /M "Введите номер пункта меню используя клавиатуру:")
+set "SubItem=%errorlevel%"
+if [%SubItem%] == [1] call :Update
+if [%SubItem%] == [2] %ifNdef% Lang (start "" "https://github.com/lostzombie/AchillesScript") else (start "" "https://github.com/lostzombie/AchillesScript/blob/main/README_local.md") 
+if [%SubItem%] == [3] call :MiniHelp
+if %SubItem% gtr 3 goto :BEGIN
+goto :Menu9
+
+:Update
+call :Header
 echo.
-call :MiniHelp
-goto :BEGIN
+%msg% " Checking availability github.com..." " Проверка доступности github.com..."
+%curl% -skLRI "https://github.com" -o nul || (%msg% " [31mGithub.com unavailable for curl[0m" " [31mGithub.com не достпупен для curl[0m"&echo.&pause&goto :Menu9)
+%msg% " Requesting data via api.github.com..." " Запрос данных через api.github.com..."
+%curl% -#LRk https://api.github.com/repos/lostzombie/AchillesScript/releases/latest -o "%~dp0latest.json" || (%msg% " [31mError downloading JSON via api.github.com[0m" " [31mОшибка загрузки JSON через api.github.com[0m"&echo.&pause&goto :Menu9) 
+%msg% " Definition of the latest version..." " Определение последней версии..." 
+%findstr% "API rate limit exceeded" "%~dp0latest.json" >nul 2>&1 && (%msg% " [31mGithub API request limit exceeded for your IP, try later[0m" " [31mПревышен лимит запросов API Github для вашего IP-адреса, попробуйте позже[0m"&echo.&pause&goto :Menu9) 
+for /f "usebackq delims=" %%L in (`%findstr% /rc:"\"tag_name\" *: *\".*\"" "%~dp0latest.json"`) do set "verline=%%L"&goto :gotver
+:gotver
+del /f /q "%~dp0latest.json" >nul 2>&1
+if "%verline%"=="" %msg% " [31mError getting the latest version[0m" " [31mОшибка получения последней версии[0m"&echo.&pause&goto :Menu9)
+for /f "tokens=1* delims=:" %%a in ("%verline%") do set "newver=%%b"
+set "newver=%newver:,=%"
+set "newver=%newver:"=%"
+set "newver=%newver: =%"
+if "%curver%"=="%newver%" (
+		%msg% " Your current version is %curver% latest, no updates" " Ваша текущая версия %curver% последняя, обновлений нет"&echo.&pause&goto :Menu9
+	) else (
+		%msg% " [32mThe new [0m[34mver %newver%[0m[32m is available" " [32mДоступна новая [0m[34mver %newver%[0m"
+		%msg% " [[32m1[0m] - [32mYes[0m [[31m0[0m] - [31mNo[0m" " [[32m1[0m] - [32mДа[0m [[31m0[0m] - [31mНет[0m"
+		%ifNdef% Lang (choice /C 01 /N /M "Update now?") else (choice /C 01 /N /M "Обновить сейчас?")
+		set "SubItem=%errorlevel%"
+		if [%SubItem%] == [0] goto :Menu9
+	)
+%curl% -#LRk https://github.com/lostzombie/AchillesScript/releases/download/%newver%/AchillesScript.cmd -o "%~dp0script.tmp" || (%msg% " [31mError loading the script from github.com[0m" " [31mОшибка загрузки скрипта с github.com[0m"&echo.&pause&goto :Menu9)  
+set /p check_script=<"%~dp0script.tmp" 
+if not "%check_script%"=="::https://github.com/lostzombie/AchillesScript" (%msg% " [31mError loading the script[0m" " [31mОшибка загрузки скрипта[0m"&echo.&pause&goto :Menu9)
+move /y "%~dp0script.tmp" "%Script%">nul 2>&1&&((start "" "%Script%")&exit)||(%msg% " [31mError script update[0m" " [31mОшибка обновления скрипта[0m"&echo.&pause&goto :Menu9)
+del /f /q "%~dp0script.tmp"  >nul 2>&1
+goto :Menu9
 
 :MAIN
 cls
@@ -388,7 +438,7 @@ exit
 :2LangMsg
 chcp 65001 >nul 2>&1
 %ifdef% Lang (echo %~2) else (echo %~1)
-%ifdef% SAFEBOOT_OPTION (%ifdef% Lang (echo %~2>>"%pth%%AS%.log") else (echo %~1>>"%pth%%AS%.log"))
+%ifdef% SAFEBOOT_OPTION %ifdef% arg1 (%ifdef% Lang (echo %~2>>"%pth%%AS%.log") else (echo %~1>>"%pth%%AS%.log"))
 exit /b
 
 :2LangErr
@@ -449,7 +499,7 @@ if exist "%save%MySecurityDefaults.reg" (%msg% " [1;30m[2] Backup              
 set DefTamper=
 (%rq% "HKLM\%smwd%\Features">nul 2>&1)&&((%rq% "HKLM\%smwd%\Features" /v "TamperProtection" 2>nul|%find% "0x5">nul 2>&1)&&set "DefTamper=1"||set DefTamper=)||set "DefTamper="
 %ifNdef% Block %ifNdef% Services %ifNdef% Registry %ifdef% Policies %ifNdef% DefTamper (%ifdef% NoReboot4Policies (%msg% " [[33m7[0m] Do not reboot for apply policies[[32mV[0m]" " [[33m7[0m] Не перезагружаться для применения политик       [[32mV[0m]") else (%msg% " [[33m7[0m] Do not reboot for apply policies[[31mX[0m]" " [[33m7[0m] Не перезагружаться для применения политик       [[31mX[0m]")) else (%msg% " [1;30m[7] %dl% Tamper protection for apply without reboot[0m" " [1;30m[7] Отключите защиту от подделки для применения без перезагрузки[0m") 
-%msg% " [1;31m%dl% third-party antivirus, if installed![0m" " [1;31mОтключите сторонний антивирус, если установлен![0m"
+%msg% " [1;31mFirst, disdable the third-party antivirus manually if it is installed![0m" " [1;31mВначале отключите сторонний антивирус вручную, если он установлен![0m"
 set DefVBS=
 set DefLsa=
 set DefLsaLock=
@@ -503,7 +553,7 @@ echo.
 %ifdef% NoReboot4Restore (%msg% " [[33m2[0m] Do not reboot for restore* [[32mV[0m]" " [[33m2[0m] Не перезагружаться для восстановления* [[32mV[0m]") else (%msg% " [[33m2[0m] Do not reboot for recovery* [[31mX[0m]" " [[33m2[0m] Не перезагружаться для восстановления* [[31mX[0m]")
 %msg% " [1;30m*use it if only policies were applied[0m" " [1;30m*используйте если применялись только политики[0m"
 echo.
-%msg% " [1;31m%dl% third-party antivirus, if installed![0m" " [1;31mОтключите сторонний антивирус, если установлен![0m" 
+%msg% " [1;31mFirst, disdable the third-party antivirus manually if it is installed![0m" " [1;31mВначале отключите сторонний антивирус вручную, если он установлен![0m"
 %ifNdef% SAFEBOOT_OPTION %ifNdef% NoReboot4Restore %msg% " [33mThe computer will be restarted [31mtwice[33m, to [31msafe mode[33m and back.[0m" " [33mКомпьютер будет перезагружен [31mдважды[33m, в [31mбезопасный режим[33m и обратно.[0m"
 %ifdef% SAFEBOOT_OPTION %ifNdef% NoReboot4Restore %msg% " [33mThe computer will be restarted.[0m" " [33mКомпьютер будет перезагружен.[0m"
 echo.
@@ -543,6 +593,7 @@ call :SafeBoot %only%
 %ifNdef% only %ifdef% NotDisableWscsvc %ra% %ASR% /v "NotDisableWscsvc" /t %sz% /d "1" /f >nul 2>&1
 %ifNdef% only %ifdef% DisableCIPolicies %ra% %ASR% /v "DisableCIPolicies" /t %sz% /d "1" /f >nul 2>&1
 %ifNdef% only %ifdef% DisablePkcsPolicies %ra% %ASR% /v "DisablePkcsPolicies" /t %sz% /d "1" /f >nul 2>&1
+%manage-bde% -protectors %sys%: -%dl% -rebootcount 1 >nul 2>&1
 %msg% "The computer will now reboot into safe mode." "Компьютер сейчас перезагрузиться в безопасный режим."
 %ifNdef% Lang (%shutdown% /r /f /t 3 /c "Reboot into safe mode") else (%shutdown% /r /f /t 3 /c "Перезагрузка в безопасный режим")
 %timeout% /t 4
@@ -594,7 +645,7 @@ echo reg delete "HKLM\%scs%\0%ASN%" /f>>"%pth%%ASN%Boot.cmd"
 echo reg delete "HKLM\%scc%\SafeBoot\Minimal\0%ASN%" /f>>"%pth%%ASN%Boot.cmd"
 %ifdef% win%df% (
 	%reg% copy "HKLM\%scc%\SafeBoot\Minimal\Win%df%" "HKLM\%scc%\SafeBoot\Minimal\Win%df%_off" /s /f>nul 2>&1
-	%rd% "HKLM\%scc%\SafeBoot\MinimalMinimal\Win%df%" /f>nul 2>&1
+	%rd% "HKLM\%scc%\SafeBoot\Minimal\Win%df%" /f>nul 2>&1
 	%ifdef% only echo reg copy "HKLM\%scc%\SafeBoot\Minimal\Win%df%_off" "HKLM\%scc%\SafeBoot\Minimal\Win%df%" /s /f>>"%pth%%ASN%Boot.cmd"
 	%ifdef% only echo reg delete "HKLM\%scc%\SafeBoot\Minimal\Win%df%_off" /f>>"%pth%%ASN%Boot.cmd"
 )
@@ -829,7 +880,7 @@ call :Header
 %msg% " [1;34m[7][0m Reboot menu                                                            [36m│[0m" " [1;34m[7][0m Меню перезагрузки                                                       [36m│[0m"
 %msg% " [1;34m[8][0m Run as TrustedInstaller                                                [36m│[0m" " [1;34m[8][0m Меню запуска с правами TrustedInstaller                                 [36m│[0m"
 %msg% "[36m────────────────────────────────────────────────────────────────────────────┤[0m" "[36m─────────────────────────────────────────────────────────────────────────────┤[0m"
-%msg% " [1;35m[9][0m Help                                                                   [36m│[0m" " [1;35m[9][0m Помощь                                                                  [36m│[0m"
+%msg% " [1;35m[9][0m Help and Update                                                        [36m│[0m" " [1;35m[9][0m Помощь и обновление                                                     [36m│[0m"
 %msg% " [35m[X][0m Exit                                                                   [36m│[0m" " [35m[X][0m Выход                                                                   [36m│[0m"
 %msg% "[36m────────────────────────────────────────────────────────────────────────────┘[0m" "[36m─────────────────────────────────────────────────────────────────────────────┘[0m"
 exit /b
@@ -853,6 +904,8 @@ echo HKCU:\Software\Microsoft\Edge,%ss%%el%d>>"%tmp%\hkcu.list"
 echo HKCU:\Software\Microsoft\Edge,%ss%Pua%el%d>>"%tmp%\hkcu.list"
 echo HKCU:\Software\Microsoft\Edge,%ss%%el%d>>"%tmp%\hkcu.list"
 echo HKCU:\Software\Microsoft\Edge,%ss%Pua%el%d>>"%tmp%\hkcu.list"
+echo HKCU:\%spm%\Windows\%cv%\Internet Settings\Zones\3,180F>>"%tmp%\hkcu.list"
+echo HKCU:\%spm%\Windows\%cv%\Internet Settings\Lockdown_Zones\3,180F>>"%tmp%\hkcu.list"
 for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| %findstr% /R /C:"S-1-5-21-*"') do (
 	echo HKU:\%%a\%smw% Security Health\State,AppAndBrowser_Edge%ss%Off>>"%tmp%\hkcu.list"
 	echo HKU:\%%a\%smw% Security Health\State,AppAndBrowser_Pua%ss%Off>>"%tmp%\hkcu.list"
@@ -869,6 +922,8 @@ for /f "tokens=7 delims=\" %%a in ('%rq% "%plist%" ^| %findstr% /R /C:"S-1-5-21-
 	echo HKU:\%spm%\Edge,%ss%Pua%el%d>>"%tmp%\hkcu.list"
 	echo HKU:\%%a\Software\Microsoft\Edge,%ss%%el%d>>"%tmp%\hkcu.list"
 	echo HKU:\%%a\Software\Microsoft\Edge,%ss%Pua%el%d>>"%tmp%\hkcu.list"
+	echo HKU:\%spm%\Windows\%cv%\Internet Settings\Zones\3,180F>>"%tmp%\hkcu.list"
+	echo HKU:\%spm%\Windows\%cv%\Internet Settings\Lockdown_Zones\3,180F>>"%tmp%\hkcu.list"
 )
 call :ListUWP sechealth
 call :ListUWP chxapp
@@ -1247,6 +1302,8 @@ echo HKLM:\%smw%\%cv%\%evt%WDAG-PolicyEvaluator-GP/Operational>>"%tmp%\hklm.list
 echo HKLM:\%smw%\%cv%\%evt%Windows Defender/Operational>>"%tmp%\hklm.list"
 echo HKLM:\%smw%\%cv%\%evt%Windows Defender/WHC>>"%tmp%\hklm.list"
 echo HKLM:\%smw%\%cv%\%evt%Windows Firewall With Advanced Security/ConnectionSecurity>>"%tmp%\hklm.list"
+echo HKLM:\%spm%\Windows\%cv%\Internet Settings\Zones\3,180F>>"%tmp%\hklm.list"
+echo HKLM:\%spm%\Windows\%cv%\Internet Settings\Lockdown_Zones\3,180F>>"%tmp%\hklm.list"
 exit /b 
 
 :LoadUsers
@@ -1278,6 +1335,8 @@ echo %smw%\%cv%\Policies\Associations;DefaultFileTypeRisk;DWORD;615^2>>"%tmp%\%A
 echo %spm%\Edge;%ss%%el%d;DWORD;^0>>"%tmp%\%ASN%user.txt"
 echo %spm%\Edge;%ss%Pua%el%d;DWORD;^0>>"%tmp%\%ASN%user.txt"
 echo %spm%\Edge;PreventOverride;DWORD;^0>>"%tmp%\%ASN%user.txt"
+echo %spm%\Windows\%cv%\Internet Settings\Zones\3;180F;DWORD;^0>>"%tmp%\%ASN%user.txt"
+echo %spm%\Windows\%cv%\Internet Settings\Lockdown_Zones\3;180F;DWORD;^0>>"%tmp%\%ASN%user.txt"
 exit /b 
 
 :MachinePolList
@@ -1308,6 +1367,8 @@ echo %spm%\Windows\WTDS\Components;NotifyMalicious;DWORD;^0>>"%tmp%\%ASN%machine
 echo %spm%\Windows\WTDS\Components;NotifyPasswordReuse;DWORD;^0>>"%tmp%\%ASN%machine.txt"
 echo %spm%\Windows\WTDS\Components;NotifyUnsafeApp;DWORD;^0>>"%tmp%\%ASN%machine.txt"
 echo %spm%\Windows\WTDS\Components;Service%el%d;DWORD;^0>>"%tmp%\%ASN%machine.txt"
+echo %spm%\Windows\%cv%\Internet Settings\Zones\3;180F;DWORD;^0>>"%tmp%\%ASN%machine.txt"
+echo %spm%\Windows\%cv%\Internet Settings\Lockdown_Zones\3;180F;DWORD;^0>>"%tmp%\%ASN%machine.txt"
 echo %spmwd% Security Center\App and Browser protection;DisallowExploitProtectionOverride;DWORD;^1>>"%tmp%\%ASN%machine.txt"
 echo %spmwd%;%dl%AntiSpyware;DWORD;^1>>"%tmp%\%ASN%machine.txt"
 echo %spmwd%;%dl%LocalAdminMerge;DWORD;^1>>"%tmp%\%ASN%machine.txt"
@@ -1403,6 +1464,8 @@ exit /b
 %ra% "HKU\%~1\%spm%\Edge" /v "%ss%Pua%el%d" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKU\%~1\%spm%\Edge" /v "PreventOverride" /t %dw% /d 0 /f>nul 2>&1
 %ra% "HKU\%~1%smw%\%cv%\AppHost" /v "%el%WebContentEvaluation" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKU\%~1\%spm%\Windows\%cv%\Internet Settings\Zones\3" /v "180F" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKU\%~1\%spm%\Windows\%cv%\Internet Settings\Lockdown_Zones\3" /v "180F" /t %dw% /d 0 /f>nul 2>&1
 exit /b
 
 :Policies
@@ -1539,6 +1602,8 @@ exit /b
 %rd% "HKLM\%spm%\Windows\DeviceGuard" /v "ConfigureKernelShadowStacksLaunch" /f>nul 2>&1
 %rd% "HKLM\%spm%\Windows\DeviceGuard" /v "MachineIdentityIsolation" /f>nul 2>&1
 %ra% "HKLM\%spm%\Windows\System" /v "RunAsPPL" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spm%\Windows\%cv%\Internet Settings\Zones\3" /v "180F" /t %dw% /d 0 /f>nul 2>&1
+%ra% "HKLM\%spm%\Windows\%cv%\Internet Settings\Lockdown_Zones\3" /v "180F" /t %dw% /d 0 /f>nul 2>&1
 ::
 %ifNdef% NotDisableSecHealth (
 	%msg% "Hide some security pages..." "Скрытие некоторых страниц безопасности..."
@@ -1662,6 +1727,22 @@ exit /b
 %regsvr32% /u "%sysdir%\ieapfltr.dll" /s>nul 2>&1
 %regsvr32% /u "%sysdir%\ThreatResponseEngine.dll" /s>nul 2>&1
 %regsvr32% /u "%sysdir%\webthreatdefsvc.dll" /s>nul 2>&1
+if exist "%ProgramData%\Microsoft\Windows Defender\Platform" for /d %%D in ("%ProgramData%\Microsoft\Windows Defender\Platform\*") do (
+	%regsvr32% /u "%%D\shellext.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\AMMonitoringProvider.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\DefenderCSP.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\MpOAV.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\MpProvider.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\MpUxAgent.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\MsMpCom.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\ProtectionManagement.dll" /s>nul 2>&1
+)
+if exist "%ProgramData%\Microsoft\Windows Defender Advanced Threat Protection\Platform" for /d %%D in ("%ProgramData%\Microsoft\Windows Defender Advanced Threat Protection\Platform\*") do (
+	%regsvr32% /u "%%D\cmicarabicwordbreaker.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\korwbrkr.dll" /s>nul 2>&1
+	%regsvr32% /u "%%D\mce.dl" /s>nul 2>&1
+	%regsvr32% /u "%%D\upe.dll" /s>nul 2>&1
+)
 %ifdef% NotDisableSecHealth goto :SkipHealthDll
 %regsvr32% /u "%sysdir%\SecurityHealthAgent.dll" /s>nul 2>&1
 %regsvr32% /u "%sysdir%\SecurityHealthProxyStub.dll" /s>nul 2>&1
@@ -1819,6 +1900,7 @@ if exist "%sysdir%\SecurityHealth" for /d %%D in ("%sysdir%\SecurityHealth\*") d
 %ra% "HKLM\%smw%\Windows Error Reporting" /v "%dl%d" /t %dw% /d "1" /f>nul 2>&1
 ::
 call :EventsWork 0
+call :CleanCaches
 ::
 %msg% "Disabling UWP apps..." "Отключение UWP приложений..."
 %ifNdef% NotDisableSecHealth call :BlockUWP sechealth
@@ -2197,7 +2279,7 @@ for %%s in (Win%df% MDCoreSvc WdNisSvc Sense SgrmBroker webthreatdefsvc webthrea
 %rd% "HKLM\%smw%\%cv%\Explorer" /v "%ss%%el%d" /f>nul 2>&1
 %ra% "HKLM\%smw%\%cv%\Explorer\StartupApproved\Run" /v "SecurityHealth" /t REG_BINARY /d "040000000000000000000000" /f>nul 2>&1
 %rd% "HKLM\%smw%\%cv%\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance" /f>nul 2>&1
-%ra% "HKLM\%smw%\%cv%\Run" /v "SecurityHealth" /t %sz% /d "C:\WINDOWS\system32\SecurityHealthSystray.exe" /f>nul 2>&1
+%ra% "HKLM\%smw%\%cv%\Run" /v "SecurityHealth" /t %sz% /d "%sysdir%\SecurityHealthSystray.exe" /f>nul 2>&1
 %rd% "HKLM\%smw%\%cv%\Run\Autoruns%dl%d" /f>nul 2>&1
 %ra% "HKLM\%smw%\%cv%\Shell Extensions\Approved" /v "{09A47860-11B0-4DA5-AFA5-26D86198A780}" /t %sz% /d "EPP" /f>nul 2>&1
 %rd% "HKLM\%smw%\%cv%\Shell Extensions\Blocked" /f>nul 2>&1
@@ -2272,6 +2354,8 @@ for %%s in (Win%df% MDCoreSvc WdNisSvc Sense SgrmBroker webthreatdefsvc webthrea
 %rd% "HKLM\%smw%\%cv%\Policies\System\Audit" /v "ProcessCreationIncludeCmdLine_%el%d" /f>nul 2>&1
 %rd% "HKLM\System\CurrentControlSet\Policies\EarlyLaunch" /f>nul 2>&1
 %rd% "HKLM\%smw%\Windows Error Reporting" /v "%dl%d" /f>nul 2>&1
+%reg% copy "HKLM\%scc%\SafeBoot\Minimal\Win%df%_off" "HKLM\%scc%\SafeBoot\Minimal\Win%df%"/s /f>nul 2>&1
+%rd% "HKLM\%scc%\SafeBoot\Minimal\Win%df%_off" /f>nul 2>&1
 call :EventsWork 1
 %msg% "Enabling UWP apps..." "Включение UWP приложений..."
 call :UnBlockUWP sechealth
@@ -2388,11 +2472,18 @@ set winre=
 for /f "delims=" %%i in ('%reagentc% /info ^| %findstr% /i "%el%d"') do (if not errorlevel 1 (set winre=1))
 %ifNdef% winre %reagentc% /enable>nul 2>&1
 for /f "delims=" %%i in ('%reagentc% /info ^| %findstr% /i "%el%d"') do (if not errorlevel 1 (set winre=1))
-%ifNdef% winre %msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутствует Среда восстановления Windows или её невозвможно включить"&exit /b
+%ifNdef% winre ( 
+		%ifNdef% SAFEBOOT_OPTION (
+			%msg% "Windows Recovery Environment is missing or cannot be enabled" "В системе отсутствует Среда восстановления Windows или её невозвможно включить"
+		    ) else (
+			%msg% "You cannot reboot into WinRE from Safe Mode" "Нельзя перезагрузиться в WinRE из безопасного режима"
+		    )
+)
+%ifNdef% winre %ifNdef% arg1 (echo.&pause&goto :Menu7) else (exit)
 %reagentc% /boottore>nul 2>&1
-manage-bde -protectors %sys%: -%dl% -rebootcount 2
+%manage-bde% -protectors %sys%: -%dl% -rebootcount 1 >nul 2>&1
 %msg% "The computer will now reboot into Windows Recovery Environment" "Компьютер сейчас перезагрузиться в Среду восстановления Windows"
-%shutdown% /r /f /t 3 /c "Reboot WinRE"
+%ifNdef% %arg1% (%shutdown% /r /f /t 3 /c "Reboot WinRE") else (%shutdown% /r /f /t 1 /c "Reboot WinRE")
 %timeout% 4
 exit /b
 
@@ -2523,12 +2614,11 @@ chcp 65001 >nul 2>&1
 %ifdef% ActiveAV (echo %av%[36m%ActiveAV%[0m) else (%ifdef% FiltersAV (echo %avfilt%%FiltersAV%) else (echo %noav%))
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
 chcp 437 >nul 2>&1
-%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Confirm-SecureBootUEFI"|%find% "True" >nul 2>&1&&set secboot=1||set secboot=
-for /f "usebackq tokens=*" %%S in (`%sysdir%\WindowsPowerShell\v1.0\powershell.exe -MTA -NoP -NoL -NonI -EP Bypass -c "(Get-BitLockerVolume -MountPoint %sys%:).VolumeStatus" 2^>nul`) do set "bitlockerStatus=%%S"
-set bitlocker=
-if "%bitlockerStatus%"=="FullyEncrypted" set bitlocker=1
-if "%bitlockerStatus%"=="EncryptionInProgress" set bitlocker=1
+%powershell% -MTA -NoL -NonI -EP Bypass -c "Write-host SecureBoot $(Confirm-SecureBootUEFI);Write-Host Bitlocker $((Get-BitLockerVolume -MountPoint %sys%:).VolumeStatus);Get-MpComputerStatus;Get-WmiObject -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard">"%tmp%\%AS%status.txt" 2>&1
 chcp 65001 >nul 2>&1
+%find% "SecureBoot True" "%tmp%\%AS%status.txt">nul 2>&1&&set secboot=1||set secboot=
+%find% "Bitlocker FullyEncrypted" "%tmp%\%AS%status.txt">nul 2>&1&&do set bitlocker=1
+%find% "Bitlocker EncryptionInProgress" "%tmp%\%AS%status.txt">nul 2>&1&&do set bitlocker=1
 %ifdef% Lang (set "info=[Службы-Драйверы: [31mЗапущено [33mВключено [1;32mВыключено[0m]") else (set "info=[Services-Drivers:    [31mRunning [33m%el%d [1;32m%dl%d[0m]")
 %ifdef% secboot (set "secmsg=%secb%[36mON[0m]") else (set "secmsg=%secb%[36mOFF[0m]")
 %ifdef% bitlocker (set "secmsg=%secmsg% %bitl%%ON%]  %info%") else (set "secmsg=%secmsg% %bitl%%OFF%]  %info%")
@@ -2537,9 +2627,7 @@ echo %secmsg%
 del /f /q "%tmp%\%AS%WTDS.txt">nul 2>&1
 if exist "%ProgramFiles%\%wd%\MsMpEng.exe" (set DefExist=1) else (set "DefExist=")
 call :isProcess "MsMpEng.exe"&&set DefRun=1||set DefRun=
-chcp 437 >nul 2>&1
-%powershell% -MTA -NoL -NonI -EP Bypass -c Get-MpComputerStatus>"%tmp%\%AS%status.txt" 2>&1||goto :SkipPSCheck
-chcp 65001 >nul 2>&1
+%find% "Antivirus%el%d" "%tmp%\%AS%status.txt">nul 2>&1||goto :SkipPSCheck
 %find% "Antivirus%el%d                 : True" "%tmp%\%AS%status.txt">nul 2>&1&&set DefOn=1||set DefOn=
 %find% "RealTimeProtection%el%d        : True" "%tmp%\%AS%status.txt">nul 2>&1&&set DefReal=1||set DefReal=
 %find% "IsTamperProtected                : True" "%tmp%\%AS%status.txt">nul 2>&1&&set DefTamper=1||set DefTamper=
@@ -2558,14 +2646,12 @@ set MpStatus=1
 %ifdef% DefReal   (echo %realtime%%ON%) else (echo %realtime%%OFF%)
 %ifdef% DefTamper (echo %tamper%%ON%) else (echo %tamper%%OFF%)
 %ifdef% DefSmart  (echo %smart%%ON%) else (echo %smart%%OFF%)
-del /f /q "%tmp%\%AS%status.txt">nul 2>&1
 chcp 65001 >nul 2>&1
 %msg% "[1;32mSystem analysis...[0m" "[1;32mАнализ системы...[0m"
 %ifNdef% DefVBS (%rq% "HKLM\%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "%el%d" 2>nul|%find% "0x1">nul 2>&1)&&set DefVBS=1||set DefVBS=
-chcp 437 >nul 2>&1
-%powershell% -MTA -NoP -NoL -NonI -EP Bypass -c "Get-WmiObject -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard"|%find% "VirtualizationBasedSecurityStatus            : 0">nul 2>&1&&set "DefVBS="||set DefVBS=1
+%find% "VirtualizationBasedSecurityStatus            : 0" "%tmp%\%AS%status.txt">nul 2>&1&&set "DefVBS="||set DefVBS=1
+del /f /q "%tmp%\%AS%status.txt">nul 2>&1
 %bcdedit%|%find% "hypervisorlaunchtype    Auto">nul 2>&1&&set "hyperv= [1;35mHyperV[0m"||set hyperv=
-chcp 65001 >nul 2>&1
 %ifdef% DefVBS (%rq% "HKLM\%sccd%\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Locked" 2>nul|%find% "0x1">nul 2>&1)&&set DefVBSLock=1||set DefVBSLock=
 %ifdef% DefVBS    (%ifdef% DefVBSLock (echo %vbs%%ONLOCK%%hyperv%) else (echo %vbs%%ON%%hyperv%)) else (echo %vbs%%OFF%)
 (%rq% "HKLM\%scc%\Lsa" /v "RunAsPPLBoot" 2>nul|%find% "0x2">nul 2>&1)&&set DefLsa=1||set DefLsa=
@@ -2616,7 +2702,7 @@ if [%ContextCount%] neq [0] (echo %conm%%ON%) else (echo %conm%%OFF%)
 ::-------------------------------------------------------------------------------------
 if exist "%windir%\System32\%ss%.exe" (set SsExist=1) else (set "SsExist=")
 call :isProcess "%ss%.exe"&&set SsRun=1||set SsRun=
-%rq% "HKLM\SOFTWARE\Classes\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32">nul 2>&1&&set SsOn=1||set SsOn=
+%rq% "HKLM\%scl%\CLSID\{a463fcb9-6b1c-4e0d-a80b-a2ca7999e25d}\LocalServer32">nul 2>&1&&set SsOn=1||set SsOn=
 %ifdef% SsExist (%ifdef% SsRun (%ifdef% SsOn (echo %ssn%%ON%) else (echo %ssn%%OFFRUN%)) else (echo %ssn%%OFF%)) else (echo %ssn%%DEL%)
 set /a SSCount=0
 %ifNdef% DefSmart (%rq% "HKLM\%spm%\Windows\System" /v "%el%%ss%" 2>nul|%find% "0x0">nul 2>&1||(%rq% "HKLM\%smw%\%cv%\Explorer" /v "%ss%%el%d" 2>nul|%find% "Off">nul 2>&1||set /a SSCount+=1)) else set /a SSCount+=1
@@ -2705,6 +2791,7 @@ echo %aplk%%summary_aplk%
 call :CIPoliciesCount
 echo %cippol%cip:[%cip%] [1;30mp7b:[%psb%][0m
 ::-------------------------------------------------------------------------------------
+%ifdef% SAFEBOOT_OPTION del /f /q "%pth%%AS%.log">nul 2>&1
 cls
 %msg% " [1;36m%WindowsVersion% %WindowsBuild%[0m [34m[script %asv%][0m [4;1;30many key to return[0m" " [1;36m%WindowsVersion% %WindowsBuild%[0m [34m[script %asv%][0m [4;1;30mлюбая клавиша назад[0m"
 %ifdef% ActiveAV (echo %av%[36m%ActiveAV%[0m) else (%ifdef% FiltersAV (echo %avfilt%%FiltersAV%) else (echo %noav%))
@@ -2868,4 +2955,17 @@ for %%a in (Z Y X W V U T S R Q P O N M L K J I H G F E D) do if not exist %%a:\
 )
 cls
 call :Reboot2Normal
+exit /b
+
+:CleanCaches
+%msg% "Clean caches and logs..." "Очистка кэшей и логов..."
+del /f /q /s "%sys%:ProgramData\Microsoft\Windows Defender\Definition Updates\Backup\*.*">nul 2>&1
+del /f /q /s "%sys%:\ProgramData\Microsoft\Windows Security Health\Logs\*.*">nul 2>&1
+del /f /q /s "%sys%:\ProgramData\Microsoft\Windows Defender\Scans\*.bin">nul 2>&1
+del /f /q /s "%sys%:\ProgramData\Microsoft\Windows Defender\Scans\*.bin64">nul 2>&1
+del /f /q /s "%sys%:\ProgramData\Microsoft\Windows Defender\Scans\*.log">nul 2>&1
+del /f /q "%sys%:\ProgramData\Microsoft\Windows Defender\Scans\mpcache*.*">nul 2>&1
+del /f /q "%sys%:\ProgramData\Microsoft\Windows Defender\Scans\*.db*">nul 2>&1
+del /f /q /s "%sys%:\ProgramData\Microsoft\Windows Defender\Scans\History\*.*">nul 2>&1
+del /f /q /s "%sys%:\ProgramData\Microsoft\Windows Defender\Support\*.*">nul 2>&1
 exit /b
