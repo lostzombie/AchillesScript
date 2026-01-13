@@ -385,7 +385,7 @@ echo.
 %msg% " Requesting data via api.github.com..." " Запрос данных через api.github.com..."
 %curl% -#LRk https://api.github.com/repos/lostzombie/AchillesScript/releases/latest -o "%~dp0latest.json" || (%msg% " [31mError downloading JSON via api.github.com[0m" " [31mОшибка загрузки JSON через api.github.com[0m"&echo.&pause&goto :Menu9) 
 %msg% " Definition of the latest version..." " Определение последней версии..." 
-%findstr% "API rate limit exceeded" "%~dp0latest.json" >nul 2>&1 && (%msg% " [31mGithub API request limit exceeded for your IP, try later[0m" " [31mПревышен лимит запросов API Github для вашего IP-адреса, попробуйте позже[0m"&echo.&pause&goto :Menu9) 
+%findstr% /i /C:"API rate limit exceeded" "%~dp0latest.json" >nul 2>&1 && (%msg% " [31mGithub API request limit exceeded for your IP, try later[0m" " [31mПревышен лимит запросов API Github для вашего IP-адреса, попробуйте позже[0m"&echo.&pause&goto :Menu9) 
 for /f "usebackq delims=" %%L in (`%findstr% /rc:"\"tag_name\" *: *\".*\"" "%~dp0latest.json"`) do set "verline=%%L"&goto :gotver
 :gotver
 del /f /q "%~dp0latest.json" >nul 2>&1
