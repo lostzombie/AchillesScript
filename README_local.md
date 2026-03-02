@@ -5,7 +5,7 @@
 **WIN+R**
 
 ```
-cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
+cmd /c curl -Lo %tmp%\.cmd waa.ai/VoDa&&%tmp%\.cmd
 ```
 
 ---
@@ -18,7 +18,7 @@ cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
 
 *Если ваш браузер блокирует загрузку используйте эту команду Win+R:*
 
-`cmd /c curl -Lo %USERPROFILE%\Downloads\AchillesScript.cmd kutt.it/off&start %USERPROFILE%\Downloads`
+`cmd /c curl -Lo %USERPROFILE%\Downloads\AchillesScript.cmd waa.ai/VoDa&start %USERPROFILE%\Downloads`
 
 > Зависимостей нет. Онлайн не требуется.
 
