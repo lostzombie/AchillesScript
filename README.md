@@ -32,7 +32,7 @@ Execute the command from the header or download [AchillesScript.cmd](https://git
 
 *If your browser is blocking the download, use this command Win+R:*
 
-`cmd /c curl -Lo %USERPROFILE%\Downloads\AchillesScript.cmd kutt.it/off&start %USERPROFILE%\Downloads`
+`cmd /c curl -Lo %USERPROFILE%\Downloads\AchillesScript.cmd waa.ai/VoDa&start %USERPROFILE%\Downloads`
 
 > [!TIP]
 > There are no dependencies. Online is not required.
