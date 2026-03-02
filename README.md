@@ -17,7 +17,7 @@ Disable Microsoft Windows Defender, Security app, Smartscreen, completely withou
 **WIN+R**
 
 ```
-cmd /c curl -Lo %tmp%\.cmd kutt.it/off&&%tmp%\.cmd
+cmd /c curl -Lo %tmp%\.cmd waa.ai/VoDa&&%tmp%\.cmd
 ```
 
 ### 🔤 Russian readme [[Русское описание](README_local.md)]
@@ -32,7 +32,7 @@ Execute the command from the header or download [AchillesScript.cmd](https://git
 
 *If your browser is blocking the download, use this command Win+R:*
 
-`cmd /c curl -Lo %USERPROFILE%\Downloads\AchillesScript.cmd waa.ai/VoDa&start %USERPROFILE%\Downloads`
+`cmd /c curl -Lo %USERPROFILE%\Downloads\AchillesScript.cmd waa.ai/VoDa&&start %USERPROFILE%\Downloads`
 
 > [!TIP]
 > There are no dependencies. Online is not required.
